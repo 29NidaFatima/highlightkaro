@@ -26,7 +26,7 @@ const HighlightKaro = () => {
     width: 0,
     height: 0,
   });
-  const [selectMode, setSelectMode] = useState(false);
+
   const [highlights, setHighlights] = useState([]);
   const [currentHighlight, setCurrentHighlight] = useState(null);
   const [highlightColor, setHighlightColor] = useState("#ffff00");
@@ -41,6 +41,7 @@ const HighlightKaro = () => {
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
   const isDragging = useRef(false);
+  const cropOffset = useRef({ x: 0, y: 0 });
   const dragStart = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -166,24 +167,30 @@ const HighlightKaro = () => {
 
     ctx.drawImage(displayImg, 0, 0, canvas.width, canvas.height);
 
-    if (cropMode) {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.clearRect(
-        cropRect.x * scale,
-        cropRect.y * scale,
-        cropRect.width * scale,
-        cropRect.height * scale
-      );
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(
-        cropRect.x * scale,
-        cropRect.y * scale,
-        cropRect.width * scale,
-        cropRect.height * scale
-      );
-    }
+if (cropMode) {
+  const sx = cropRect.x * scale;
+  const sy = cropRect.y * scale;
+  const sw = cropRect.width * scale;
+  const sh = cropRect.height * scale;
+
+  // Dim entire canvas
+  ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Use composite operation to "cut out" transparent crop area
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.fillRect(sx, sy, sw, sh);
+
+  // Reset composite mode
+  ctx.globalCompositeOperation = "source-over";
+
+  // Draw white crop border
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(sx, sy, sw, sh);
+}
+
+
 
     highlights.forEach((hl) => {
       ctx.globalCompositeOperation = "multiply";
@@ -229,7 +236,7 @@ const HighlightKaro = () => {
       if (cropMode) handleCropMouseDown(e);
       return;
     }
-    if (!selectMode) return;
+  
 
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -242,29 +249,55 @@ const HighlightKaro = () => {
     };
   };
 
-  const handleCanvasMouseMove = (e) => {
-console.log("MOVE");
-    if (!isDragging.current || !selectMode) return;
+ const handleCanvasMouseMove = (e) => {
+  console.log("MOVE");
 
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const scale = canvas.width / (croppedImage || image).width;
+  if (!canvasRef.current || !image) return;
 
-    const currentX = (e.clientX - rect.left) / scale;
-    const currentY = (e.clientY - rect.top) / scale;
+  const canvas = canvasRef.current;
+  const rect = canvas.getBoundingClientRect();
+  const scale = canvas.width / (croppedImage || image).width;
 
-    setCurrentHighlight({
-      x: Math.min(dragStart.current.x, currentX),
-      y: Math.min(dragStart.current.y, currentY),
-      width: Math.abs(currentX - dragStart.current.x),
-      height: Math.abs(currentY - dragStart.current.y),
-    });
-  };
+  const mouseX = (e.clientX - rect.left) / scale;
+  const mouseY = (e.clientY - rect.top) / scale;
+
+ if (cropMode && isDraggingCrop.current) {
+  const canvas = canvasRef.current;
+  const rect = canvas.getBoundingClientRect();
+  const scale = canvas.width / image.width;
+
+  const mouseX = (e.clientX - rect.left) / scale;
+  const mouseY = (e.clientY - rect.top) / scale;
+
+  setCropRect((prev) => ({
+    ...prev,
+    x: mouseX - cropOffset.current.x,
+    y: mouseY - cropOffset.current.y,
+  }));
+
+  return; 
+}
+
+
+  if (!isDragging.current || cropMode) return;
+
+  setCurrentHighlight({
+    x: Math.min(dragStart.current.x, mouseX),
+    y: Math.min(dragStart.current.y, mouseY),
+    width: Math.abs(mouseX - dragStart.current.x),
+    height: Math.abs(mouseY - dragStart.current.y),
+  });
+};
+
 
   const handleCanvasMouseUp = () => {
  console.log("UP");
 
-    if (isDragging.current && currentHighlight && selectMode) {
+ if (cropMode) {
+  isDraggingCrop.current = false;
+}
+
+    if (isDragging.current && currentHighlight && !cropMode) {
       if (currentHighlight.width > 10 && currentHighlight.height > 10) {
         setHighlights([
           ...highlights,
@@ -280,18 +313,29 @@ console.log("MOVE");
     }
     isDragging.current = false;
   };
+const handleCropMouseDown = (e) => {
+  const canvas = canvasRef.current;
+  const rect = canvas.getBoundingClientRect();
+  const scale = canvas.width / image.width;
 
-  const handleCropMouseDown = (e) => {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const scale = canvas.width / image.width;
+  const mouseX = (e.clientX - rect.left) / scale;
+  const mouseY = (e.clientY - rect.top) / scale;
 
-    isDragging.current = true;
-    dragStart.current = {
-      x: (e.clientX - rect.left) / scale,
-      y: (e.clientY - rect.top) / scale,
+  // Check if inside crop area
+  if (
+    mouseX >= cropRect.x &&
+    mouseX <= cropRect.x + cropRect.width &&
+    mouseY >= cropRect.y &&
+    mouseY <= cropRect.y + cropRect.height
+  ) {
+    isDraggingCrop.current = true;
+    cropOffset.current = {
+      x: mouseX - cropRect.x,
+      y: mouseY - cropRect.y,
     };
-  };
+  }
+};
+
 
   const startCrop = () => {
     setCropMode(true);
@@ -606,34 +650,7 @@ console.log("MOVE");
                   )}
                 </div>
 
-                {/* Selection tool */}
-                <div>
-                  <label
-                    className={`block text-sm font-semibold mb-2 ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    }`}
-                  >
-                    <Square size={16} className="inline mr-2" />
-                    Selection Tool
-                  </label>
-                  <button
-                    onClick={() => {
-                      setSelectMode(!selectMode);
-                      setCropMode(false);
-                    }}
-                    className={`w-full py-2 px-3 rounded-lg text-sm transition-all ${
-                      selectMode
-                        ? darkMode
-                          ? "bg-yellow-500 text-black"
-                          : "bg-orange-500 text-white"
-                        : darkMode
-                        ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
-                  >
-                    {selectMode ? "Drawing Enabled" : "Enable Drawing"}
-                  </button>
-                </div>
+             
 
                 {/* Highlight color */}
                 <div>
@@ -896,7 +913,7 @@ console.log("MOVE");
               onMouseUp={handleCanvasMouseUp}
               onMouseLeave={handleCanvasMouseUp}
               className={`rounded-lg ${
-                selectMode || cropMode ? "cursor-crosshair" : "cursor-default"
+cropMode ? "cursor-crosshair" : "cursor-crosshair"
               }`}
             />
           </div>
@@ -905,5 +922,4 @@ console.log("MOVE");
     </div>
   );
 };
-
 export default HighlightKaro;
