@@ -301,12 +301,18 @@ console.log("MOVE");
     }
   };
 
+  const handleUndo = () => {
+  setHighlights((prev) => prev.slice(0, -1));
+};
+
+
   // BACKEND EXPORT VERSION
   const handleExport = async () => {
     if (!highlights.length) {
       alert("Please add at least one highlight area");
       return;
     }
+    
 
     setExporting(true);
 
@@ -680,6 +686,23 @@ console.log("MOVE");
                     className="w-full"
                   />
                 </div>
+
+                {/* Undo Button */}
+               <button
+                onClick={handleUndo}
+                disabled={highlights.length === 0}
+                className={`w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all
+                    ${highlights.length === 0
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : darkMode
+                    ? "bg-yellow-500 text-black hover:bg-yellow-400"
+                    : "bg-orange-500 text-white hover:bg-orange-600"
+                }
+  `             }
+               >
+             Undo Highlight
+             </button>
+
 
                 {/* Animation type */}
                 <div>
