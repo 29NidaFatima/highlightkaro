@@ -539,10 +539,11 @@ const handleCropMouseDown = (e) => {
       </div>
 
       {/* Main layout */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row gap-6 h-[calc(100vh-140px)]">
+<div className="relative z-10 max-w-7xl mx-auto px-2 py-4 flex flex-col gap-4 md:flex-row md:gap-6 md:h-[calc(100vh-140px)]">
+
         {/* Controls panel */}
         <div
-          className={`w-full md:w-80 lg:w-96 rounded-xl border p-4 overflow-y-auto ${
+          className={`w-full md:w-80 lg:w-96 rounded-xl border p-4 max-h-[70vh] md:max-h-full overflow-y-auto  ${
             darkMode
               ? "bg-gray-900 border-yellow-500/20"
               : "bg-white/90 border-orange-200"
@@ -898,7 +899,8 @@ const handleCropMouseDown = (e) => {
         </div>
 
         {/* Canvas Area */}
-        <div className="flex-1 flex items-center justify-center">
+<div className="w-full flex items-center justify-center">
+
           <div
             className={`border rounded-xl p-4 backdrop-blur-sm ${
               darkMode
@@ -912,9 +914,8 @@ const handleCropMouseDown = (e) => {
               onMouseMove={handleCanvasMouseMove}
               onMouseUp={handleCanvasMouseUp}
               onMouseLeave={handleCanvasMouseUp}
-              className={`rounded-lg ${
-cropMode ? "cursor-crosshair" : "cursor-crosshair"
-              }`}
+className={`rounded-lg max-w-full h-auto ${cropMode ? "cursor-crosshair" : "cursor-crosshair"}`}
+
             />
           </div>
         </div>
