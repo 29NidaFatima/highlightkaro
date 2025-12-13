@@ -37,9 +37,12 @@ const HighlightKaro = () => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationTime, setAnimationTime] = useState(0);
   const [exporting, setExporting] = useState(false);
+  const [tapStart, setTapStart] = useState(null);
+
 
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
+  const isDraggingCrop = useRef(false);
   const isDragging = useRef(false);
   const cropOffset = useRef({ x: 0, y: 0 });
   const dragStart = useRef({ x: 0, y: 0 });
@@ -77,6 +80,20 @@ const HighlightKaro = () => {
     }
     return () => cancelAnimationFrame(animationFrame);
   }, [isAnimating, animationDuration]);
+
+  const getCanvasPoint = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const scale = canvas.width / (croppedImage || image).width;
+
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    return {
+      x: (clientX - rect.left) / scale,
+      y: (clientY - rect.top) / scale,
+    };
+  };
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -167,28 +184,28 @@ const HighlightKaro = () => {
 
     ctx.drawImage(displayImg, 0, 0, canvas.width, canvas.height);
 
-if (cropMode) {
-  const sx = cropRect.x * scale;
-  const sy = cropRect.y * scale;
-  const sw = cropRect.width * scale;
-  const sh = cropRect.height * scale;
+    if (cropMode) {
+      const sx = cropRect.x * scale;
+      const sy = cropRect.y * scale;
+      const sw = cropRect.width * scale;
+      const sh = cropRect.height * scale;
 
-  // Dim entire canvas
-  ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Dim entire canvas
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Use composite operation to "cut out" transparent crop area
-  ctx.globalCompositeOperation = "destination-out";
-  ctx.fillRect(sx, sy, sw, sh);
+      // Use composite operation to "cut out" transparent crop area
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.fillRect(sx, sy, sw, sh);
 
-  // Reset composite mode
-  ctx.globalCompositeOperation = "source-over";
+      // Reset composite mode
+      ctx.globalCompositeOperation = "source-over";
 
-  // Draw white crop border
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(sx, sy, sw, sh);
-}
+      // Draw white crop border
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(sx, sy, sw, sh);
+    }
 
 
 
@@ -229,6 +246,41 @@ if (cropMode) {
     }
   };
 
+  const handleCanvasSelect = (e) => {
+    if (!image || cropMode) return;
+
+    // Prevent conflict with drag highlight on desktop
+    if (!e.touches && isDragging.current) return;
+
+    const point = getCanvasPoint(e);
+
+    if (!tapStart) {
+      setTapStart(point);
+    } else {
+      const rect = {
+        x: Math.min(tapStart.x, point.x),
+        y: Math.min(tapStart.y, point.y),
+        width: Math.abs(point.x - tapStart.x),
+        height: Math.abs(point.y - tapStart.y),
+      };
+
+      if (rect.width > 10 && rect.height > 10) {
+        setHighlights((prev) => [
+          ...prev,
+          {
+            ...rect,
+            color: highlightColor,
+            opacity: highlightOpacity,
+            animation: animationType,
+          },
+        ]);
+      }
+
+      setTapStart(null);
+    }
+  };
+
+
   const handleCanvasMouseDown = (e) => {
     console.log("DOWN");
 
@@ -236,7 +288,7 @@ if (cropMode) {
       if (cropMode) handleCropMouseDown(e);
       return;
     }
-  
+
 
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -249,53 +301,53 @@ if (cropMode) {
     };
   };
 
- const handleCanvasMouseMove = (e) => {
-  console.log("MOVE");
+  const handleCanvasMouseMove = (e) => {
+    console.log("MOVE");
 
-  if (!canvasRef.current || !image) return;
+    if (!canvasRef.current || !image) return;
 
-  const canvas = canvasRef.current;
-  const rect = canvas.getBoundingClientRect();
-  const scale = canvas.width / (croppedImage || image).width;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const scale = canvas.width / (croppedImage || image).width;
 
-  const mouseX = (e.clientX - rect.left) / scale;
-  const mouseY = (e.clientY - rect.top) / scale;
+    const mouseX = (e.clientX - rect.left) / scale;
+    const mouseY = (e.clientY - rect.top) / scale;
 
- if (cropMode && isDraggingCrop.current) {
-  const canvas = canvasRef.current;
-  const rect = canvas.getBoundingClientRect();
-  const scale = canvas.width / image.width;
+    if (cropMode && isDraggingCrop.current) {
+      const canvas = canvasRef.current;
+      const rect = canvas.getBoundingClientRect();
+      const scale = canvas.width / image.width;
 
-  const mouseX = (e.clientX - rect.left) / scale;
-  const mouseY = (e.clientY - rect.top) / scale;
+      const mouseX = (e.clientX - rect.left) / scale;
+      const mouseY = (e.clientY - rect.top) / scale;
 
-  setCropRect((prev) => ({
-    ...prev,
-    x: mouseX - cropOffset.current.x,
-    y: mouseY - cropOffset.current.y,
-  }));
+      setCropRect((prev) => ({
+        ...prev,
+        x: mouseX - cropOffset.current.x,
+        y: mouseY - cropOffset.current.y,
+      }));
 
-  return; 
-}
+      return;
+    }
 
 
-  if (!isDragging.current || cropMode) return;
+    if (!isDragging.current || cropMode) return;
 
-  setCurrentHighlight({
-    x: Math.min(dragStart.current.x, mouseX),
-    y: Math.min(dragStart.current.y, mouseY),
-    width: Math.abs(mouseX - dragStart.current.x),
-    height: Math.abs(mouseY - dragStart.current.y),
-  });
-};
+    setCurrentHighlight({
+      x: Math.min(dragStart.current.x, mouseX),
+      y: Math.min(dragStart.current.y, mouseY),
+      width: Math.abs(mouseX - dragStart.current.x),
+      height: Math.abs(mouseY - dragStart.current.y),
+    });
+  };
 
 
   const handleCanvasMouseUp = () => {
- console.log("UP");
+    console.log("UP");
 
- if (cropMode) {
-  isDraggingCrop.current = false;
-}
+    if (cropMode) {
+      isDraggingCrop.current = false;
+    }
 
     if (isDragging.current && currentHighlight && !cropMode) {
       if (currentHighlight.width > 10 && currentHighlight.height > 10) {
@@ -313,41 +365,40 @@ if (cropMode) {
     }
     isDragging.current = false;
   };
-const handleCropMouseDown = (e) => {
-  const canvas = canvasRef.current;
-  const rect = canvas.getBoundingClientRect();
-  const scale = canvas.width / image.width;
+  const handleCropMouseDown = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const scale = canvas.width / image.width;
 
-  const mouseX = (e.clientX - rect.left) / scale;
-  const mouseY = (e.clientY - rect.top) / scale;
+    const mouseX = (e.clientX - rect.left) / scale;
+    const mouseY = (e.clientY - rect.top) / scale;
 
-  // Check if inside crop area
-  if (
-    mouseX >= cropRect.x &&
-    mouseX <= cropRect.x + cropRect.width &&
-    mouseY >= cropRect.y &&
-    mouseY <= cropRect.y + cropRect.height
-  ) {
-    isDraggingCrop.current = true;
-    cropOffset.current = {
-      x: mouseX - cropRect.x,
-      y: mouseY - cropRect.y,
-    };
-  }
-};
+    // Check if inside crop area
+    if (
+      mouseX >= cropRect.x &&
+      mouseX <= cropRect.x + cropRect.width &&
+      mouseY >= cropRect.y &&
+      mouseY <= cropRect.y + cropRect.height
+    ) {
+      isDraggingCrop.current = true;
+      cropOffset.current = {
+        x: mouseX - cropRect.x,
+        y: mouseY - cropRect.y,
+      };
+    }
+  };
 
 
   const startCrop = () => {
     setCropMode(true);
-    setSelectMode(false);
     if (image) {
       setCropRect({ x: 0, y: 0, width: image.width, height: image.height });
     }
   };
 
   const handleUndo = () => {
-  setHighlights((prev) => prev.slice(0, -1));
-};
+    setHighlights((prev) => prev.slice(0, -1));
+  };
 
 
   // BACKEND EXPORT VERSION
@@ -356,7 +407,7 @@ const handleCropMouseDown = (e) => {
       alert("Please add at least one highlight area");
       return;
     }
-    
+
 
     setExporting(true);
 
@@ -422,11 +473,10 @@ const handleCropMouseDown = (e) => {
 
   return (
     <div
-      className={`min-h-screen transition-all duration-500 ${
-        darkMode
+      className={`min-h-screen transition-all duration-500 ${darkMode
           ? "dark bg-black"
           : "bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50"
-      }`}
+        }`}
     >
       {/* Background decorations */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -489,9 +539,8 @@ const handleCropMouseDown = (e) => {
 
         {/* Phoenix watermark */}
         <div
-          className={`absolute bottom-4 right-4 opacity-10 ${
-            darkMode ? "text-yellow-500" : "text-orange-800"
-          }`}
+          className={`absolute bottom-4 right-4 opacity-10 ${darkMode ? "text-yellow-500" : "text-orange-800"
+            }`}
         >
           <svg width="60" height="60" viewBox="0 0 100 100" fill="currentColor">
             <path d="M50,10 C50,10 30,20 30,40 C30,50 35,55 40,58 C35,62 32,68 35,75 C40,85 55,88 60,80 C62,77 62,73 60,70 C70,68 75,60 73,50 C72,45 68,42 65,40 C70,35 70,25 50,10 Z" />
@@ -502,36 +551,32 @@ const handleCropMouseDown = (e) => {
 
       {/* Header */}
       <div
-        className={`relative z-10 border-b ${
-          darkMode
+        className={`relative z-10 border-b ${darkMode
             ? "bg-gray-900 border-yellow-500/20"
             : "bg-white/80 border-orange-200"
-        } backdrop-blur-sm`}
+          } backdrop-blur-sm`}
       >
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
             <h1
-              className={`text-3xl font-bold ${
-                darkMode ? "text-yellow-400" : "text-orange-600"
-              }`}
+              className={`text-3xl font-bold ${darkMode ? "text-yellow-400" : "text-orange-600"
+                }`}
             >
               HighlightKaro
             </h1>
             <p
-              className={`text-sm ${
-                darkMode ? "text-gray-400" : "text-gray-600"
-              }`}
+              className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"
+                }`}
             >
               Create CapCut-style highlight animations in seconds
             </p>
           </div>
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className={`p-3 rounded-full transition-all ${
-              darkMode
+            className={`p-3 rounded-full transition-all ${darkMode
                 ? "bg-yellow-500 text-black hover:bg-yellow-400"
                 : "bg-orange-500 text-white hover:bg-orange-600"
-            }`}
+              }`}
           >
             {darkMode ? <Sun size={20} /> : <Moon size={20} />}
           </button>
@@ -539,15 +584,14 @@ const handleCropMouseDown = (e) => {
       </div>
 
       {/* Main layout */}
-<div className="relative z-10 max-w-7xl mx-auto px-2 py-4 flex flex-col gap-4 md:flex-row md:gap-6 md:h-[calc(100vh-140px)]">
+      <div className="relative z-10 max-w-7xl mx-auto px-2 py-4 flex flex-col gap-4 md:flex-row md:gap-6 md:h-[calc(100vh-140px)]">
 
         {/* Controls panel */}
         <div
-          className={`w-full md:w-80 lg:w-96 rounded-xl border p-4 max-h-[70vh] md:max-h-full overflow-y-auto  ${
-            darkMode
+          className={`w-full md:w-80 lg:w-96 rounded-xl border p-4 max-h-[70vh] md:max-h-full overflow-y-auto  ${darkMode
               ? "bg-gray-900 border-yellow-500/20"
               : "bg-white/90 border-orange-200"
-          } backdrop-blur-sm`}
+            } backdrop-blur-sm`}
         >
           <input
             ref={fileInputRef}
@@ -559,11 +603,10 @@ const handleCropMouseDown = (e) => {
 
           <button
             onClick={() => fileInputRef.current.click()}
-            className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${
-              darkMode
+            className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${darkMode
                 ? "bg-yellow-500 text-black hover:bg-yellow-400"
                 : "bg-orange-500 text-white hover:bg-orange-600"
-            }`}
+              }`}
           >
             <Upload size={20} />
             Upload Image
@@ -575,9 +618,8 @@ const handleCropMouseDown = (e) => {
                 {/* Crop tool */}
                 <div>
                   <label
-                    className={`block text-sm font-semibold mb-2 ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    }`}
+                    className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"
+                      }`}
                   >
                     <Crop size={16} className="inline mr-2" />
                     Crop Tool
@@ -585,26 +627,24 @@ const handleCropMouseDown = (e) => {
                   <div className="flex gap-2 mb-2">
                     <button
                       onClick={startCrop}
-                      className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${
-                        cropMode
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${cropMode
                           ? darkMode
                             ? "bg-yellow-500 text-black"
                             : "bg-orange-500 text-white"
                           : darkMode
-                          ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      }`}
+                            ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        }`}
                     >
                       {cropMode ? "Cropping..." : "Start Crop"}
                     </button>
                     {cropMode && (
                       <button
                         onClick={applyCrop}
-                        className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${
-                          darkMode
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${darkMode
                             ? "bg-green-600 hover:bg-green-500"
                             : "bg-green-500 hover:bg-green-600"
-                        } text-white`}
+                          } text-white`}
                       >
                         Apply
                       </button>
@@ -636,11 +676,10 @@ const handleCropMouseDown = (e) => {
                           });
                         }
                       }}
-                      className={`w-full p-2 rounded-lg text-sm border ${
-                        darkMode
+                      className={`w-full p-2 rounded-lg text-sm border ${darkMode
                           ? "bg-gray-800 text-gray-300 border-gray-700"
                           : "bg-gray-100 text-gray-700 border-gray-300"
-                      }`}
+                        }`}
                     >
                       <option value="free">Freeform</option>
                       <option value="16:9">16:9</option>
@@ -651,14 +690,13 @@ const handleCropMouseDown = (e) => {
                   )}
                 </div>
 
-             
+
 
                 {/* Highlight color */}
                 <div>
                   <label
-                    className={`block text-sm font-semibold mb-2 ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    }`}
+                    className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"
+                      }`}
                   >
                     <Palette size={16} className="inline mr-2" />
                     Highlight Color
@@ -674,11 +712,10 @@ const handleCropMouseDown = (e) => {
                       type="text"
                       value={highlightColor}
                       onChange={(e) => setHighlightColor(e.target.value)}
-                      className={`flex-1 p-2 rounded-lg text-sm border ${
-                        darkMode
+                      className={`flex-1 p-2 rounded-lg text-sm border ${darkMode
                           ? "bg-gray-800 text-gray-300 border-gray-700"
                           : "bg-gray-100 text-gray-700 border-gray-300"
-                      }`}
+                        }`}
                     />
                   </div>
                 </div>
@@ -686,9 +723,8 @@ const handleCropMouseDown = (e) => {
                 {/* Opacity */}
                 <div>
                   <label
-                    className={`block text-sm font-semibold mb-2 ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    }`}
+                    className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"
+                      }`}
                   >
                     Opacity: {Math.round(highlightOpacity * 100)}%
                   </label>
@@ -706,39 +742,37 @@ const handleCropMouseDown = (e) => {
                 </div>
 
                 {/* Undo Button */}
-               <button
-                onClick={handleUndo}
-                disabled={highlights.length === 0}
-                className={`w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all
+                <button
+                  onClick={handleUndo}
+                  disabled={highlights.length === 0}
+                  className={`w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all
                     ${highlights.length === 0
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : darkMode
-                    ? "bg-yellow-500 text-black hover:bg-yellow-400"
-                    : "bg-orange-500 text-white hover:bg-orange-600"
-                }
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : darkMode
+                        ? "bg-yellow-500 text-black hover:bg-yellow-400"
+                        : "bg-orange-500 text-white hover:bg-orange-600"
+                    }
   `             }
-               >
-             Undo Highlight
-             </button>
+                >
+                  Undo Highlight
+                </button>
 
 
                 {/* Animation type */}
                 <div>
                   <label
-                    className={`block text-sm font-semibold mb-2 ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    }`}
+                    className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"
+                      }`}
                   >
                     Animation Type
                   </label>
                   <select
                     value={animationType}
                     onChange={(e) => setAnimationType(e.target.value)}
-                    className={`w-full p-2 rounded-lg text-sm border ${
-                      darkMode
+                    className={`w-full p-2 rounded-lg text-sm border ${darkMode
                         ? "bg-gray-800 text-gray-300 border-gray-700"
                         : "bg-gray-100 text-gray-700 border-gray-300"
-                    }`}
+                      }`}
                   >
                     <option value="left-to-right">Left → Right</option>
                     <option value="pulse">Pulse</option>
@@ -748,9 +782,8 @@ const handleCropMouseDown = (e) => {
                 {/* Duration */}
                 <div>
                   <label
-                    className={`block text-sm font-semibold mb-2 ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    }`}
+                    className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"
+                      }`}
                   >
                     Duration: {animationDuration}s
                   </label>
@@ -770,38 +803,35 @@ const handleCropMouseDown = (e) => {
                 {/* FPS */}
                 <div>
                   <label
-                    className={`block text-sm font-semibold mb-2 ${
-                      darkMode ? "text-gray-300" : "text-gray-700"
-                    }`}
+                    className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"
+                      }`}
                   >
                     FPS
                   </label>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setFps(24)}
-                      className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${
-                        fps === 24
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${fps === 24
                           ? darkMode
                             ? "bg-yellow-500 text-black"
                             : "bg-orange-500 text-white"
                           : darkMode
-                          ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      }`}
+                            ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        }`}
                     >
                       24
                     </button>
                     <button
                       onClick={() => setFps(30)}
-                      className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${
-                        fps === 30
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${fps === 30
                           ? darkMode
                             ? "bg-yellow-500 text-black"
                             : "bg-orange-500 text-white"
                           : darkMode
-                          ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      }`}
+                            ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        }`}
                     >
                       30
                     </button>
@@ -812,9 +842,8 @@ const handleCropMouseDown = (e) => {
                 {highlights.length > 0 && (
                   <div>
                     <label
-                      className={`block text-sm font-semibold mb-2 ${
-                        darkMode ? "text-gray-300" : "text-gray-700"
-                      }`}
+                      className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"
+                        }`}
                     >
                       Highlights ({highlights.length})
                     </label>
@@ -822,9 +851,8 @@ const handleCropMouseDown = (e) => {
                       {highlights.map((hl, idx) => (
                         <div
                           key={idx}
-                          className={`p-2 rounded-lg flex items-center justify-between text-sm ${
-                            darkMode ? "bg-gray-800" : "bg-gray-100"
-                          }`}
+                          className={`p-2 rounded-lg flex items-center justify-between text-sm ${darkMode ? "bg-gray-800" : "bg-gray-100"
+                            }`}
                         >
                           <div className="flex items-center gap-2">
                             <div
@@ -845,11 +873,10 @@ const handleCropMouseDown = (e) => {
                                 highlights.filter((_, i) => i !== idx)
                               )
                             }
-                            className={`text-xs px-2 py-1 rounded ${
-                              darkMode
+                            className={`text-xs px-2 py-1 rounded ${darkMode
                                 ? "bg-red-600 hover:bg-red-500"
                                 : "bg-red-500 hover:bg-red-600"
-                            } text-white`}
+                              } text-white`}
                           >
                             Remove
                           </button>
@@ -866,13 +893,12 @@ const handleCropMouseDown = (e) => {
                     setAnimationTime(0);
                   }}
                   disabled={highlights.length === 0}
-                  className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${
-                    highlights.length === 0
+                  className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${highlights.length === 0
                       ? "bg-gray-400 cursor-not-allowed"
                       : darkMode
-                      ? "bg-blue-600 hover:bg-blue-500 text-white"
-                      : "bg-blue-500 hover:bg-blue-600 text-white"
-                  }`}
+                        ? "bg-blue-600 hover:bg-blue-500 text-white"
+                        : "bg-blue-500 hover:bg-blue-600 text-white"
+                    }`}
                 >
                   <Play size={20} />
                   Preview Animation
@@ -882,13 +908,12 @@ const handleCropMouseDown = (e) => {
                 <button
                   onClick={handleExport}
                   disabled={highlights.length === 0 || exporting}
-                  className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${
-                    highlights.length === 0 || exporting
+                  className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${highlights.length === 0 || exporting
                       ? "bg-gray-400 cursor-not-allowed"
                       : darkMode
-                      ? "bg-green-600 hover:bg-green-500 text-white"
-                      : "bg-green-500 hover:bg-green-600 text-white"
-                  }`}
+                        ? "bg-green-600 hover:bg-green-500 text-white"
+                        : "bg-green-500 hover:bg-green-600 text-white"
+                    }`}
                 >
                   <Download size={20} />
                   {exporting ? "Exporting..." : "Export Video"}
@@ -899,24 +924,28 @@ const handleCropMouseDown = (e) => {
         </div>
 
         {/* Canvas Area */}
-<div className="w-full flex items-center justify-center">
+        <div className="w-full flex items-center justify-center">
 
           <div
-            className={`border rounded-xl p-4 backdrop-blur-sm ${
-              darkMode
+            className={`border rounded-xl p-4 backdrop-blur-sm ${darkMode
                 ? "bg-gray-900 border-yellow-500/20"
                 : "bg-white/90 border-orange-200"
-            }`}
+              }`}
           >
             <canvas
               ref={canvasRef}
+
+              onClick={handleCanvasSelect}
+              onTouchStart={handleCanvasSelect}
+
               onMouseDown={handleCanvasMouseDown}
               onMouseMove={handleCanvasMouseMove}
               onMouseUp={handleCanvasMouseUp}
               onMouseLeave={handleCanvasMouseUp}
-className={`rounded-lg max-w-full h-auto ${cropMode ? "cursor-crosshair" : "cursor-crosshair"}`}
 
+              className="rounded-lg max-w-full h-auto cursor-crosshair"
             />
+
           </div>
         </div>
       </div>
