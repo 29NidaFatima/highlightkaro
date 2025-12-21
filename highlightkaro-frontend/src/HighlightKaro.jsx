@@ -9,6 +9,7 @@ import {
   Download,
   Play,
 } from "lucide-react";
+import PlanGuard from "./components/PlanGuard";
 
 const HighlightKaro = () => {
   const [darkMode, setDarkMode] = useState(false);
@@ -474,8 +475,8 @@ const HighlightKaro = () => {
   return (
     <div
       className={`min-h-screen transition-all duration-500 ${darkMode
-          ? "dark bg-black"
-          : "bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50"
+        ? "dark bg-black"
+        : "bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50"
         }`}
     >
       {/* Background decorations */}
@@ -552,8 +553,8 @@ const HighlightKaro = () => {
       {/* Header */}
       <div
         className={`relative z-10 border-b ${darkMode
-            ? "bg-gray-900 border-yellow-500/20"
-            : "bg-white/80 border-orange-200"
+          ? "bg-gray-900 border-yellow-500/20"
+          : "bg-white/80 border-orange-200"
           } backdrop-blur-sm`}
       >
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -574,8 +575,8 @@ const HighlightKaro = () => {
           <button
             onClick={() => setDarkMode(!darkMode)}
             className={`p-3 rounded-full transition-all ${darkMode
-                ? "bg-yellow-500 text-black hover:bg-yellow-400"
-                : "bg-orange-500 text-white hover:bg-orange-600"
+              ? "bg-yellow-500 text-black hover:bg-yellow-400"
+              : "bg-orange-500 text-white hover:bg-orange-600"
               }`}
           >
             {darkMode ? <Sun size={20} /> : <Moon size={20} />}
@@ -589,8 +590,8 @@ const HighlightKaro = () => {
         {/* Controls panel */}
         <div
           className={`w-full md:w-80 lg:w-96 rounded-xl border p-4 max-h-[70vh] md:max-h-full overflow-y-auto  ${darkMode
-              ? "bg-gray-900 border-yellow-500/20"
-              : "bg-white/90 border-orange-200"
+            ? "bg-gray-900 border-yellow-500/20"
+            : "bg-white/90 border-orange-200"
             } backdrop-blur-sm`}
         >
           <input
@@ -604,8 +605,8 @@ const HighlightKaro = () => {
           <button
             onClick={() => fileInputRef.current.click()}
             className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${darkMode
-                ? "bg-yellow-500 text-black hover:bg-yellow-400"
-                : "bg-orange-500 text-white hover:bg-orange-600"
+              ? "bg-yellow-500 text-black hover:bg-yellow-400"
+              : "bg-orange-500 text-white hover:bg-orange-600"
               }`}
           >
             <Upload size={20} />
@@ -628,12 +629,12 @@ const HighlightKaro = () => {
                     <button
                       onClick={startCrop}
                       className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${cropMode
-                          ? darkMode
-                            ? "bg-yellow-500 text-black"
-                            : "bg-orange-500 text-white"
-                          : darkMode
-                            ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        ? darkMode
+                          ? "bg-yellow-500 text-black"
+                          : "bg-orange-500 text-white"
+                        : darkMode
+                          ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                         }`}
                     >
                       {cropMode ? "Cropping..." : "Start Crop"}
@@ -642,8 +643,8 @@ const HighlightKaro = () => {
                       <button
                         onClick={applyCrop}
                         className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${darkMode
-                            ? "bg-green-600 hover:bg-green-500"
-                            : "bg-green-500 hover:bg-green-600"
+                          ? "bg-green-600 hover:bg-green-500"
+                          : "bg-green-500 hover:bg-green-600"
                           } text-white`}
                       >
                         Apply
@@ -677,8 +678,8 @@ const HighlightKaro = () => {
                         }
                       }}
                       className={`w-full p-2 rounded-lg text-sm border ${darkMode
-                          ? "bg-gray-800 text-gray-300 border-gray-700"
-                          : "bg-gray-100 text-gray-700 border-gray-300"
+                        ? "bg-gray-800 text-gray-300 border-gray-700"
+                        : "bg-gray-100 text-gray-700 border-gray-300"
                         }`}
                     >
                       <option value="free">Freeform</option>
@@ -713,8 +714,8 @@ const HighlightKaro = () => {
                       value={highlightColor}
                       onChange={(e) => setHighlightColor(e.target.value)}
                       className={`flex-1 p-2 rounded-lg text-sm border ${darkMode
-                          ? "bg-gray-800 text-gray-300 border-gray-700"
-                          : "bg-gray-100 text-gray-700 border-gray-300"
+                        ? "bg-gray-800 text-gray-300 border-gray-700"
+                        : "bg-gray-100 text-gray-700 border-gray-300"
                         }`}
                     />
                   </div>
@@ -770,8 +771,8 @@ const HighlightKaro = () => {
                     value={animationType}
                     onChange={(e) => setAnimationType(e.target.value)}
                     className={`w-full p-2 rounded-lg text-sm border ${darkMode
-                        ? "bg-gray-800 text-gray-300 border-gray-700"
-                        : "bg-gray-100 text-gray-700 border-gray-300"
+                      ? "bg-gray-800 text-gray-300 border-gray-700"
+                      : "bg-gray-100 text-gray-700 border-gray-300"
                       }`}
                   >
                     <option value="left-to-right">Left → Right</option>
@@ -812,12 +813,12 @@ const HighlightKaro = () => {
                     <button
                       onClick={() => setFps(24)}
                       className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${fps === 24
-                          ? darkMode
-                            ? "bg-yellow-500 text-black"
-                            : "bg-orange-500 text-white"
-                          : darkMode
-                            ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        ? darkMode
+                          ? "bg-yellow-500 text-black"
+                          : "bg-orange-500 text-white"
+                        : darkMode
+                          ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                         }`}
                     >
                       24
@@ -825,12 +826,12 @@ const HighlightKaro = () => {
                     <button
                       onClick={() => setFps(30)}
                       className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${fps === 30
-                          ? darkMode
-                            ? "bg-yellow-500 text-black"
-                            : "bg-orange-500 text-white"
-                          : darkMode
-                            ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        ? darkMode
+                          ? "bg-yellow-500 text-black"
+                          : "bg-orange-500 text-white"
+                        : darkMode
+                          ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                         }`}
                     >
                       30
@@ -874,8 +875,8 @@ const HighlightKaro = () => {
                               )
                             }
                             className={`text-xs px-2 py-1 rounded ${darkMode
-                                ? "bg-red-600 hover:bg-red-500"
-                                : "bg-red-500 hover:bg-red-600"
+                              ? "bg-red-600 hover:bg-red-500"
+                              : "bg-red-500 hover:bg-red-600"
                               } text-white`}
                           >
                             Remove
@@ -894,30 +895,35 @@ const HighlightKaro = () => {
                   }}
                   disabled={highlights.length === 0}
                   className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${highlights.length === 0
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : darkMode
-                        ? "bg-blue-600 hover:bg-blue-500 text-white"
-                        : "bg-blue-500 hover:bg-blue-600 text-white"
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : darkMode
+                      ? "bg-blue-600 hover:bg-blue-500 text-white"
+                      : "bg-blue-500 hover:bg-blue-600 text-white"
                     }`}
                 >
                   <Play size={20} />
                   Preview Animation
                 </button>
 
+
                 {/* Export button */}
-                <button
-                  onClick={handleExport}
-                  disabled={highlights.length === 0 || exporting}
-                  className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${highlights.length === 0 || exporting
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : darkMode
-                        ? "bg-green-600 hover:bg-green-500 text-white"
-                        : "bg-green-500 hover:bg-green-600 text-white"
-                    }`}
-                >
-                  <Download size={20} />
-                  {exporting ? "Exporting..." : "Export Video"}
-                </button>
+             <PlanGuard requiredPlan="basic19" darkMode={darkMode}>
+
+                  <button
+                    onClick={handleExport}
+                    disabled={highlights.length === 0 || exporting}
+                    className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${highlights.length === 0 || exporting
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : darkMode
+                          ? "bg-green-600 hover:bg-green-500 text-white"
+                          : "bg-green-500 hover:bg-green-600 text-white"
+                      }`}
+                  >
+                    <Download size={20} />
+                    {exporting ? "Exporting..." : "Export Video"}
+                  </button>
+                </PlanGuard>
+
               </div>
             </>
           )}
@@ -928,8 +934,8 @@ const HighlightKaro = () => {
 
           <div
             className={`border rounded-xl p-4 backdrop-blur-sm ${darkMode
-                ? "bg-gray-900 border-yellow-500/20"
-                : "bg-white/90 border-orange-200"
+              ? "bg-gray-900 border-yellow-500/20"
+              : "bg-white/90 border-orange-200"
               }`}
           >
             <canvas
