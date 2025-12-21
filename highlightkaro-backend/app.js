@@ -6,16 +6,37 @@ const path = require("path");
 const os = require("os");
 const { spawn } = require("child_process");
 const { createCanvas, loadImage } = require("canvas");
+require("dotenv").config();
+const connectDB = require("./config/db");
+
+
+const auth = require("./middleware/auth.middleware");
+const plan = require("./middleware/plan.middleware");
+const authRoutes = require("./routes/auth.routes");
+const renderRoutes = require("./routes/render.routes");
+
+
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-
-// Allow requests from your frontend dev server
 app.use(
   cors({
-    origin: "*", // for dev; restrict in production
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
 );
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true })); 
+const PORT = process.env.PORT || 5000;
+
+app.use("/api/auth", authRoutes);
+app.use("/api", renderRoutes);
+
+
+app.use("/api/auth", require("./routes/auth.routes"));
+
 
 // Multer setup for file uploads
 const upload = multer({
@@ -27,8 +48,13 @@ function safeRm(targetPath) {
   if (!targetPath) return;
   fs.rm(targetPath, { recursive: true, force: true }, () => { });
 }
+app.post(
+  "/render",
+  auth,
+  plan("basic19"),
+  upload.single("image"),
+  async (req, res) => {
 
-app.post("/render", upload.single("image"), async (req, res) => {
   // Multer provides: req.file (image), req.body (fields)
   if (!req.file) {
     return res.status(400).json({ error: "Image file is required" });
@@ -203,3 +229,6 @@ app.post("/render", upload.single("image"), async (req, res) => {
 app.listen(PORT, () => {
   console.log(`HighlightKaro backend listening on port ${PORT}`);
 });
+
+connectDB();
+
