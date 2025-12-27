@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const { login } = useAuth(); // 
 
   const handleLogin = async () => {
     const res = await fetch("http://localhost:5000/api/auth/login", {
@@ -21,10 +23,8 @@ export default function Login() {
       return;
     }
 
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
-
-    navigate("/");
+    login(data);     
+    navigate("/");   
   };
 
   return (
