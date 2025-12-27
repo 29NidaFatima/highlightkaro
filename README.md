@@ -43,34 +43,53 @@ Perfect for creators, editors, educators, or anyone who needs clean animated hig
 
 ## 📁 Folder Structure
 ```
-HIGHLIGHTKARO/
-│
-├── highlightkaro-backend/
-│   ├── app.js
-│   ├── package-lock.json
-│   ├── package.json
-│
-├── highlightkaro-frontend/
-│   ├── node_modules/
-│   ├── public/
-│   ├── src/
-│   │   ├── assets/
-│   │   ├── App.css
-│   │   ├── App.jsx
-│   │   ├── HighlightKaro.jsx
-│   │   ├── index.css
-│   │   ├── main.jsx
-│   ├── .gitignore
-│   ├── eslint.config.js
-│   ├── index.html
-│   ├── package-lock.json
-│   ├── package.json
-│   ├── postcss.config.js
-│   ├── README.md
-│   ├── tailwind.config.js
-│   ├── vite.config.js
-│
-└── (root)
+Directory structure:
+└──highlightkaro/
+    ├── README.md
+    ├── highlightkaro-backend/
+    │   ├── app.js
+    │   ├── package.json
+    │   ├── config/
+    │   │   └── db.js
+    │   ├── controllers/
+    │   │   └── authController.js
+    │   ├── middleware/
+    │   │   ├── auth.middleware.js
+    │   │   └── plan.middleware.js
+    │   ├── models/
+    │   │   └── User.js
+    │   ├── routes/
+    │   │   ├── auth.routes.js
+    │   │   └── render.routes.js
+    │   └── utils/
+    │       └── jwt.js
+    └── highlightkaro-frontend/
+        ├── README.md
+        ├── eslint.config.js
+        ├── index.html
+        ├── package.json
+        ├── postcss.config.js
+        ├── tailwind.config.js
+        ├── vite.config.js
+        └── src/
+            ├── App.css
+            ├── App.jsx
+            ├── HighlightKaro.jsx
+            ├── index.css
+            ├── main.jsx
+            ├── api/
+            │   ├── authApi.js
+            │   └── renderApi.js
+            ├── components/
+            │   └── PlanGuard.jsx
+            ├── context/
+            │   └── AuthContext.jsx
+            ├── pages/
+            │   ├── Login.jsx
+            │   └── Register.jsx
+            └── utils/
+                └── auth.js
+
 
 
 ```
