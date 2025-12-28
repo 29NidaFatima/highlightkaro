@@ -1,7 +1,8 @@
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
-const planOrder = ["free", "basic19", "pro99"];
+// ✅ CHANGE: consistent naming
+const PLAN_ORDER = ["free", "basic19", "pro99"];
 
 const PlanGuard = ({ requiredPlan, children, darkMode }) => {
   const { user } = useAuth();
@@ -18,8 +19,8 @@ const PlanGuard = ({ requiredPlan, children, darkMode }) => {
             : "bg-white/90 border-orange-200 text-gray-700"
         }`}
       >
-       <p className="text-sm mb-3 text-gray-600">
-        Login to continue creating highlights
+        <p className="text-sm mb-3">
+          Login to continue creating highlights
         </p>
 
         <button
@@ -38,7 +39,10 @@ const PlanGuard = ({ requiredPlan, children, darkMode }) => {
   }
 
   /* ---------- PLAN TOO LOW ---------- */
-  if (planOrder.indexOf(user.plan) < planOrder.indexOf(requiredPlan)) {
+  if (
+    PLAN_ORDER.indexOf(user.plan) <
+    PLAN_ORDER.indexOf(requiredPlan)
+  ) {
     return (
       <div
         className={`mt-4 p-4 rounded-xl border text-sm
@@ -49,14 +53,21 @@ const PlanGuard = ({ requiredPlan, children, darkMode }) => {
         }`}
       >
         <p className="font-medium mb-1">
-          Current Plan: <span className="capitalize">{user.plan}</span>
+          Current Plan:{" "}
+          <span className="capitalize">{user.plan}</span>
         </p>
 
         <p className="mb-3 opacity-80">
-          Upgrade to <span className="font-medium">Basic</span> to export videos
+          Upgrade to{" "}
+          <span className="font-medium capitalize">
+            {requiredPlan}
+          </span>{" "}
+          to unlock this feature
         </p>
 
+        {/* ✅ CHANGE: real navigation */}
         <button
+          onClick={() => navigate("/upgrade")}
           className={`w-full py-2.5 rounded-lg text-sm font-medium transition
           ${
             darkMode

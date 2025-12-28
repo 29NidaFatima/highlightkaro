@@ -10,14 +10,20 @@ import {
   Play,
 } from "lucide-react";
 import PlanGuard from "./components/PlanGuard";
+import { useAuth } from "./context/AuthContext";
+import { PLAN_CONFIG } from "./config/planConfig";
+import { useNavigate } from "react-router-dom";
 
 const HighlightKaro = () => {
+
   const [darkMode, setDarkMode] = useState(false);
   const [image, setImage] = useState(null);
   const [imageDimensions, setImageDimensions] = useState({
     width: 0,
     height: 0,
   });
+  const { token } = useAuth();
+
   const [croppedImage, setCroppedImage] = useState(null);
   const [cropMode, setCropMode] = useState(false);
   const [cropRatio, setCropRatio] = useState("free");
@@ -39,6 +45,11 @@ const HighlightKaro = () => {
   const [animationTime, setAnimationTime] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [tapStart, setTapStart] = useState(null);
+const { user, logout } = useAuth();
+const navigate = useNavigate();
+
+const plan = user?.plan || "free";
+const planConfig = PLAN_CONFIG[plan];
 
 
   const canvasRef = useRef(null);
@@ -62,6 +73,12 @@ const HighlightKaro = () => {
     highlightColor,
     highlightOpacity,
   ]);
+
+  useEffect(() => {
+  if (!planConfig.darkMode && darkMode) {
+    setDarkMode(false);
+  }
+}, [plan, darkMode]);
 
   useEffect(() => {
     let animationFrame;
@@ -184,6 +201,20 @@ const HighlightKaro = () => {
     canvas.height = displayImg.height * scale;
 
     ctx.drawImage(displayImg, 0, 0, canvas.width, canvas.height);
+    // 🔐 WATERMARK — FREE PLAN ONLY
+if (planConfig.watermark) {
+  ctx.save();                
+  ctx.globalAlpha = 0.15;
+  ctx.font = "24px Arial";
+  ctx.fillStyle = "#000";
+  ctx.textAlign = "right";
+  ctx.fillText(
+    "HighlightKaro",
+    canvas.width - 16,
+    canvas.height - 16
+  );
+  ctx.restore();              
+}
 
     if (cropMode) {
       const sx = cropRect.x * scale;
@@ -444,10 +475,13 @@ const HighlightKaro = () => {
         hl.animation === "left-to-right" ? "ltr" : "pulse"
       );
 
-      const res = await fetch("http://localhost:5000/render", {
-        method: "POST",
-        body: formData,
-      });
+const res = await fetch("http://localhost:5000/render", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+  body: formData,
+});
 
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
@@ -551,38 +585,73 @@ const HighlightKaro = () => {
       </div>
 
       {/* Header */}
-      <div
-        className={`relative z-10 border-b ${darkMode
-          ? "bg-gray-900 border-yellow-500/20"
-          : "bg-white/80 border-orange-200"
-          } backdrop-blur-sm`}
+{/* Header */}
+<div
+  className={`relative z-10 border-b ${
+    darkMode
+      ? "bg-gray-900 border-yellow-500/20"
+      : "bg-white/80 border-orange-200"
+  } backdrop-blur-sm`}
+>
+  <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+    
+    {/* Left: Logo & Tagline */}
+    <div>
+      <h1
+        className={`text-3xl font-bold ${
+          darkMode ? "text-yellow-400" : "text-orange-600"
+        }`}
       >
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1
-              className={`text-3xl font-bold ${darkMode ? "text-yellow-400" : "text-orange-600"
-                }`}
-            >
-              HighlightKaro
-            </h1>
-            <p
-              className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"
-                }`}
-            >
-              Create CapCut-style highlight animations in seconds
-            </p>
-          </div>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className={`p-3 rounded-full transition-all ${darkMode
-              ? "bg-yellow-500 text-black hover:bg-yellow-400"
-              : "bg-orange-500 text-white hover:bg-orange-600"
-              }`}
-          >
-            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-        </div>
-      </div>
+        HighlightKaro
+      </h1>
+      <p
+        className={`text-sm ${
+          darkMode ? "text-gray-400" : "text-gray-600"
+        }`}
+      >
+        Create CapCut-style highlight animations in seconds
+      </p>
+    </div>
+
+    {/* Right: Dark Mode + Logout */}
+    <div className="flex items-center gap-3">
+      
+      {/* Dark mode toggle */}
+      <button
+        onClick={() => setDarkMode(!darkMode)}
+        disabled={!planConfig.darkMode}
+        className={`p-3 rounded-full transition-all ${
+          darkMode
+            ? "bg-yellow-500 text-black hover:bg-yellow-400"
+            : "bg-orange-500 text-white hover:bg-orange-600"
+        } ${
+          !planConfig.darkMode && "opacity-50 cursor-not-allowed"
+        }`}
+      >
+        {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+      </button>
+
+      {/* Logout */}
+      {user && (
+<button
+  onClick={() => {
+    logout();
+    navigate("/");
+  }}
+  className={`px-5 py-2 text-sm rounded-lg font-medium transition-all
+    ${darkMode
+      ? "bg-yellow-500 text-black hover:bg-yellow-400"
+      : "bg-orange-500 text-white hover:bg-orange-600"}
+  `}
+>
+  Logout
+</button>
+
+      )}
+    </div>
+  </div>
+</div>
+
 
       {/* Main layout */}
       <div className="relative z-10 max-w-7xl mx-auto px-2 py-4 flex flex-col gap-4 md:flex-row md:gap-6 md:h-[calc(100vh-140px)]">
@@ -694,32 +763,34 @@ const HighlightKaro = () => {
 
 
                 {/* Highlight color */}
-                <div>
-                  <label
-                    className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"
-                      }`}
-                  >
-                    <Palette size={16} className="inline mr-2" />
-                    Highlight Color
-                  </label>
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="color"
-                      value={highlightColor}
-                      onChange={(e) => setHighlightColor(e.target.value)}
-                      className="w-12 h-10 rounded cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={highlightColor}
-                      onChange={(e) => setHighlightColor(e.target.value)}
-                      className={`flex-1 p-2 rounded-lg text-sm border ${darkMode
-                        ? "bg-gray-800 text-gray-300 border-gray-700"
-                        : "bg-gray-100 text-gray-700 border-gray-300"
-                        }`}
-                    />
-                  </div>
-                </div>
+
+<div>
+  <label className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+    <Palette size={16} className="inline mr-2" />
+    Highlight Color
+  </label>
+
+  <div className="flex gap-2">
+    {planConfig.colors === "ALL"
+      ? ["#ffff00", "#ff0000", "#00ffff", "#00ff00"].map((color) => (
+          <button
+            key={color}
+            onClick={() => setHighlightColor(color)}
+            style={{ backgroundColor: color }}
+            className="w-8 h-8 rounded border"
+          />
+        ))
+      : planConfig.colors.map((color) => (
+          <button
+            key={color}
+            onClick={() => setHighlightColor(color)}
+            style={{ backgroundColor: color }}
+            className="w-8 h-8 rounded border"
+          />
+        ))}
+  </div>
+</div>
+
 
                 {/* Opacity */}
                 <div>
@@ -767,17 +838,31 @@ const HighlightKaro = () => {
                   >
                     Animation Type
                   </label>
-                  <select
-                    value={animationType}
-                    onChange={(e) => setAnimationType(e.target.value)}
-                    className={`w-full p-2 rounded-lg text-sm border ${darkMode
-                      ? "bg-gray-800 text-gray-300 border-gray-700"
-                      : "bg-gray-100 text-gray-700 border-gray-300"
-                      }`}
-                  >
-                    <option value="left-to-right">Left → Right</option>
-                    <option value="pulse">Pulse</option>
-                  </select>
+<select
+  value={animationType}
+  onChange={(e) => setAnimationType(e.target.value)}
+  className={`w-full p-2 rounded-lg text-sm border ${darkMode
+    ? "bg-gray-800 text-gray-300 border-gray-700"
+    : "bg-gray-100 text-gray-700 border-gray-300"
+  }`}
+>
+  {planConfig.animations === "ALL" ? (
+    <>
+      <option value="left-to-right">Left → Right</option>
+      <option value="down-up">Down → Up</option>
+      <option value="rise">Rise</option>
+      <option value="glow">Glow Swipe</option>
+      <option value="underline">Underline</option>
+    </>
+  ) : (
+    planConfig.animations.map((anim) => (
+      <option key={anim} value={anim}>
+        {anim}
+      </option>
+    ))
+  )}
+</select>
+
                 </div>
 
                 {/* Duration */}
