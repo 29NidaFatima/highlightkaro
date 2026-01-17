@@ -1,3 +1,24 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Range slider styles for cyan theme (light mode only) */
+input[type="range"] {
+  @apply appearance-none w-full h-2 bg-gray-200 rounded-lg outline-none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  @apply appearance-none w-4 h-4 bg-cyan-500 rounded-full cursor-pointer hover:bg-cyan-600 transition-colors;
+}
+
+input[type="range"]::-moz-range-thumb {
+  @apply w-4 h-4 bg-cyan-500 rounded-full cursor-pointer border-0 hover:bg-cyan-600 transition-colors;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  @apply w-full h-2 bg-gray-200 rounded-lg;
+}
+
+input[type="range"]::-moz-range-track {
+  @apply w-full h-2 bg-gray-200 rounded-lg;
+}
