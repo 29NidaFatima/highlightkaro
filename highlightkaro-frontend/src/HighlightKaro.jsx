@@ -13,6 +13,7 @@ import PlanGuard from "./components/PlanGuard";
 import { useAuth } from "./context/AuthContext";
 import { PLAN_CONFIG } from "./config/planConfig";
 import { useNavigate } from "react-router-dom";
+import { saveExportState, getExportState, clearExportState } from "./utils/exportState";
 
 const HighlightKaro = () => {
 
@@ -176,7 +177,7 @@ const planConfig = PLAN_CONFIG[plan];
     if (!displayImg) {
       canvas.width = 800;
       canvas.height = 600;
-      ctx.fillStyle = darkMode ? "#1a1a1a" : "#f5f5dc";
+      ctx.fillStyle = darkMode ? "#1a1a1a" : "#ecfeff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = darkMode ? "#666" : "#999";
       ctx.font = "20px Arial";
@@ -433,32 +434,17 @@ if (planConfig.watermark) {
   };
 
 
-  // BACKEND EXPORT VERSION
-  const handleExport = async () => {
-    if (!highlights.length) {
-      alert("Please add at least one highlight area");
-      return;
-    }
-
-
+  // Perform actual export (called after login if needed)
+  const performExport = async (imageDataUrl, highlightsData, settings) => {
     setExporting(true);
 
     try {
-      const displayImg = croppedImage || image;
-
-      const tempCanvas = document.createElement("canvas");
-      tempCanvas.width = displayImg.width;
-      tempCanvas.height = displayImg.height;
-      const ctx = tempCanvas.getContext("2d");
-      ctx.drawImage(displayImg, 0, 0);
-
-      const blob = await new Promise((resolve) =>
-        tempCanvas.toBlob(resolve, "image/png")
-      );
-
+      // Convert data URL to File
+      const response = await fetch(imageDataUrl);
+      const blob = await response.blob();
       const file = new File([blob], "image.png", { type: "image/png" });
 
-      const hl = highlights[0];
+      const hl = highlightsData[0];
 
       const formData = new FormData();
       formData.append("image", file);
@@ -468,24 +454,30 @@ if (planConfig.watermark) {
       formData.append("h", hl.height);
       formData.append("color", hl.color);
       formData.append("opacity", hl.opacity * 100);
-      formData.append("duration", animationDuration);
-      formData.append("fps", fps);
-      formData.append(
-        "anim",
-        hl.animation === "left-to-right" ? "ltr" : "pulse"
-      );
+      formData.append("duration", settings.duration);
+      formData.append("fps", settings.fps);
+      formData.append("anim", hl.animation || "left-to-right");
 
-const res = await fetch("http://localhost:5000/render", {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${token}`,
-  },
-  body: formData,
-});
+      const res = await fetch("http://localhost:5000/render", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
 
       if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error("Backend error: " + txt);
+        const errorData = await res.json().catch(() => ({}));
+        const errorMsg = errorData.error || "Export failed";
+        
+        // Handle export limit error specifically
+        if (res.status === 403 && errorData.limit) {
+          throw new Error(
+            `Daily export limit reached (${errorData.limit} exports). Upgrade to Basic plan for unlimited exports.`
+          );
+        }
+        
+        throw new Error(errorMsg);
       }
 
       const videoBlob = await res.blob();
@@ -499,18 +491,121 @@ const res = await fetch("http://localhost:5000/render", {
       document.body.removeChild(a);
 
       URL.revokeObjectURL(url);
+      
+      // Clear pending export state
+      clearExportState();
     } catch (err) {
-      alert("Export error: " + err.message);
+      // Show user-friendly error message
+      const errorMessage = err.message.includes("limit reached")
+        ? err.message
+        : `Export failed: ${err.message}`;
+      alert(errorMessage);
+      throw err;
     } finally {
       setExporting(false);
     }
   };
 
+  // Handle export button click
+  const handleExport = async () => {
+    if (!highlights.length) {
+      alert("Please add at least one highlight area");
+      return;
+    }
+
+    // Check if user is logged in
+    if (!user || !token) {
+      // Save export state and redirect to login
+      const displayImg = croppedImage || image;
+      
+      // Convert image to data URL for storage
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = displayImg.width;
+      tempCanvas.height = displayImg.height;
+      const ctx = tempCanvas.getContext("2d");
+      ctx.drawImage(displayImg, 0, 0);
+      const imageDataUrl = tempCanvas.toDataURL("image/png");
+
+      // Save export state
+      saveExportState({
+        imageDataUrl,
+        highlights,
+        settings: {
+          duration: animationDuration,
+          fps,
+        },
+      });
+
+      // Redirect to login with return path
+      navigate("/login?return=export");
+      return;
+    }
+
+    // User is logged in, proceed with export
+    const displayImg = croppedImage || image;
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = displayImg.width;
+    tempCanvas.height = displayImg.height;
+    const ctx = tempCanvas.getContext("2d");
+    ctx.drawImage(displayImg, 0, 0);
+    const imageDataUrl = tempCanvas.toDataURL("image/png");
+
+    await performExport(imageDataUrl, highlights, {
+      duration: animationDuration,
+      fps,
+    });
+  };
+
+  // Restore export state after login (but DO NOT auto-export)
+  useEffect(() => {
+    if (user && token) {
+      const pendingExport = getExportState();
+      if (pendingExport) {
+        // Restore editor state from saved export data
+        try {
+          // Restore image
+          if (pendingExport.imageDataUrl) {
+            const img = new Image();
+            img.onload = () => {
+              setImage(img);
+              setImageDimensions({ width: img.width, height: img.height });
+            };
+            img.src = pendingExport.imageDataUrl;
+          }
+
+          // Restore highlights
+          if (pendingExport.highlights) {
+            setHighlights(pendingExport.highlights);
+          }
+
+          // Restore settings
+          if (pendingExport.settings) {
+            if (pendingExport.settings.duration) {
+              setAnimationDuration(pendingExport.settings.duration);
+            }
+            if (pendingExport.settings.fps) {
+              setFps(pendingExport.settings.fps);
+            }
+          }
+
+          // Clear pending export state (prevent auto-export)
+          clearExportState();
+
+          // Show user-friendly message
+          alert("You're logged in. Click Export to continue.");
+        } catch (err) {
+          console.error("Failed to restore export state:", err);
+          clearExportState(); // Clear on error
+        }
+      }
+    }
+  }, [user, token]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div
       className={`min-h-screen transition-all duration-500 ${darkMode
         ? "dark bg-black"
-        : "bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50"
+        : "bg-gradient-to-br from-cyan-50 via-blue-50 to-sky-50"
         }`}
     >
       {/* Background decorations */}
@@ -543,7 +638,7 @@ const res = await fetch("http://localhost:5000/render", {
                   <svg width="20" height="20" viewBox="0 0 20 20">
                     <path
                       d="M10,2 L12,8 L18,8 L13,12 L15,18 L10,14 L5,18 L7,12 L2,8 L8,8 Z"
-                      fill="#ff6b35"
+                      fill="#06b6d4"
                     />
                   </svg>
                 </div>
@@ -574,7 +669,7 @@ const res = await fetch("http://localhost:5000/render", {
 
         {/* Phoenix watermark */}
         <div
-          className={`absolute bottom-4 right-4 opacity-10 ${darkMode ? "text-yellow-500" : "text-orange-800"
+          className={`absolute bottom-4 right-4 opacity-10 ${darkMode ? "text-yellow-500" : "text-cyan-800"
             }`}
         >
           <svg width="60" height="60" viewBox="0 0 100 100" fill="currentColor">
@@ -588,9 +683,9 @@ const res = await fetch("http://localhost:5000/render", {
 {/* Header */}
 <div
   className={`relative z-10 border-b ${
-    darkMode
-      ? "bg-gray-900 border-yellow-500/20"
-      : "bg-white/80 border-orange-200"
+      darkMode
+        ? "bg-gray-900 border-yellow-500/20"
+        : "bg-white/80 border-cyan-200"
   } backdrop-blur-sm`}
 >
   <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -599,7 +694,7 @@ const res = await fetch("http://localhost:5000/render", {
     <div>
       <h1
         className={`text-3xl font-bold ${
-          darkMode ? "text-yellow-400" : "text-orange-600"
+          darkMode ? "text-yellow-400" : "text-cyan-600"
         }`}
       >
         HighlightKaro
@@ -623,7 +718,7 @@ const res = await fetch("http://localhost:5000/render", {
         className={`p-3 rounded-full transition-all ${
           darkMode
             ? "bg-yellow-500 text-black hover:bg-yellow-400"
-            : "bg-orange-500 text-white hover:bg-orange-600"
+            : "bg-cyan-500 text-white hover:bg-cyan-600"
         } ${
           !planConfig.darkMode && "opacity-50 cursor-not-allowed"
         }`}
@@ -641,7 +736,7 @@ const res = await fetch("http://localhost:5000/render", {
   className={`px-5 py-2 text-sm rounded-lg font-medium transition-all
     ${darkMode
       ? "bg-yellow-500 text-black hover:bg-yellow-400"
-      : "bg-orange-500 text-white hover:bg-orange-600"}
+      : "bg-cyan-500 text-white hover:bg-cyan-600"}
   `}
 >
   Logout
@@ -660,7 +755,7 @@ const res = await fetch("http://localhost:5000/render", {
         <div
           className={`w-full md:w-80 lg:w-96 rounded-xl border p-4 max-h-[70vh] md:max-h-full overflow-y-auto  ${darkMode
             ? "bg-gray-900 border-yellow-500/20"
-            : "bg-white/90 border-orange-200"
+            : "bg-white/90 border-cyan-200"
             } backdrop-blur-sm`}
         >
           <input
@@ -675,7 +770,7 @@ const res = await fetch("http://localhost:5000/render", {
             onClick={() => fileInputRef.current.click()}
             className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${darkMode
               ? "bg-yellow-500 text-black hover:bg-yellow-400"
-              : "bg-orange-500 text-white hover:bg-orange-600"
+              : "bg-cyan-500 text-white hover:bg-cyan-600"
               }`}
           >
             <Upload size={20} />
@@ -700,7 +795,7 @@ const res = await fetch("http://localhost:5000/render", {
                       className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${cropMode
                         ? darkMode
                           ? "bg-yellow-500 text-black"
-                          : "bg-orange-500 text-white"
+                          : "bg-cyan-500 text-white"
                         : darkMode
                           ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
                           : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -822,7 +917,7 @@ const res = await fetch("http://localhost:5000/render", {
                       ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                       : darkMode
                         ? "bg-yellow-500 text-black hover:bg-yellow-400"
-                        : "bg-orange-500 text-white hover:bg-orange-600"
+                        : "bg-cyan-500 text-white hover:bg-cyan-600"
                     }
   `             }
                 >
@@ -900,7 +995,7 @@ const res = await fetch("http://localhost:5000/render", {
                       className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${fps === 24
                         ? darkMode
                           ? "bg-yellow-500 text-black"
-                          : "bg-orange-500 text-white"
+                          : "bg-cyan-500 text-white"
                         : darkMode
                           ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
                           : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -913,7 +1008,7 @@ const res = await fetch("http://localhost:5000/render", {
                       className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${fps === 30
                         ? darkMode
                           ? "bg-yellow-500 text-black"
-                          : "bg-orange-500 text-white"
+                          : "bg-cyan-500 text-white"
                         : darkMode
                           ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
                           : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -983,7 +1078,7 @@ const res = await fetch("http://localhost:5000/render", {
                     ? "bg-gray-400 cursor-not-allowed"
                     : darkMode
                       ? "bg-blue-600 hover:bg-blue-500 text-white"
-                      : "bg-blue-500 hover:bg-blue-600 text-white"
+                      : "bg-cyan-500 hover:bg-cyan-600 text-white"
                     }`}
                 >
                   <Play size={20} />
@@ -992,22 +1087,30 @@ const res = await fetch("http://localhost:5000/render", {
 
 
                 {/* Export button */}
-             <PlanGuard requiredPlan="basic19" darkMode={darkMode}>
-
-                  <button
-                    onClick={handleExport}
-                    disabled={highlights.length === 0 || exporting}
-                    className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${highlights.length === 0 || exporting
-                        ? "bg-gray-400 cursor-not-allowed"
+                <button
+                  onClick={handleExport}
+                  disabled={highlights.length === 0 || exporting}
+                  className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${highlights.length === 0 || exporting
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : !user
+                        ? darkMode
+                          ? "bg-cyan-600 hover:bg-cyan-500 text-white"
+                          : "bg-cyan-500 hover:bg-cyan-600 text-white"
                         : darkMode
                           ? "bg-green-600 hover:bg-green-500 text-white"
                           : "bg-green-500 hover:bg-green-600 text-white"
-                      }`}
-                  >
-                    <Download size={20} />
-                    {exporting ? "Exporting..." : "Export Video"}
-                  </button>
-                </PlanGuard>
+                    }`}
+                >
+                  <Download size={20} />
+                  {exporting ? "Exporting..." : user ? "Export Video" : "Login to Export"}
+                </button>
+                
+                {/* Export limit info for free plan */}
+                {user && planConfig.exportLimit && (
+                  <p className="text-xs text-center text-gray-500 mt-2">
+                    {planConfig.exportLimit} exports per day on Free plan
+                  </p>
+                )}
 
               </div>
             </>
@@ -1020,7 +1123,7 @@ const res = await fetch("http://localhost:5000/render", {
           <div
             className={`border rounded-xl p-4 backdrop-blur-sm ${darkMode
               ? "bg-gray-900 border-yellow-500/20"
-              : "bg-white/90 border-orange-200"
+              : "bg-white/90 border-cyan-200"
               }`}
           >
             <canvas
