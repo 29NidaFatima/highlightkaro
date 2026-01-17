@@ -14,6 +14,8 @@ import { useAuth } from "./context/AuthContext";
 import { PLAN_CONFIG } from "./config/planConfig";
 import { useNavigate } from "react-router-dom";
 import { saveExportState, getExportState, clearExportState } from "./utils/exportState";
+import { createPaymentLink } from "./api/paymentApi";
+
 
 const HighlightKaro = () => {
 
@@ -23,7 +25,16 @@ const HighlightKaro = () => {
     width: 0,
     height: 0,
   });
-  const { token } = useAuth();
+
+const handleUpgrade = async (plan) => {
+  try {
+    const data = await createPaymentLink(plan, token);
+    window.location.href = data.paymentLinkUrl; // Redirect to Razorpay
+  } catch (err) {
+    alert(err.message);
+  }
+};
+
 
   const [croppedImage, setCroppedImage] = useState(null);
   const [cropMode, setCropMode] = useState(false);
@@ -46,7 +57,8 @@ const HighlightKaro = () => {
   const [animationTime, setAnimationTime] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [tapStart, setTapStart] = useState(null);
-const { user, logout } = useAuth();
+const { user, token, logout } = useAuth();
+
 const navigate = useNavigate();
 
 const plan = user?.plan || "free";
@@ -725,6 +737,39 @@ if (planConfig.watermark) {
       >
         {darkMode ? <Sun size={20} /> : <Moon size={20} />}
       </button>
+{/* Plan badge + Upgrade */}
+{user && (
+  <div className="flex items-center gap-2 mr-2">
+    <span
+      className={`text-xs px-3 py-1 rounded-full font-semibold ${
+        darkMode
+          ? "bg-gray-800 text-yellow-400"
+          : "bg-cyan-100 text-cyan-700"
+      }`}
+    >
+      {user.plan.toUpperCase()}
+    </span>
+
+    {user.plan === "free" && (
+    <button
+  onClick={() => navigate("/upgrade")}
+  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm"
+>
+  Upgrade
+</button>
+
+    )}
+
+    {user.plan === "basic19" && (
+      <button
+        onClick={() => handleUpgrade("pro99")}
+        className="px-3 py-1 text-xs rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold"
+      >
+        Go Pro ₹99
+      </button>
+    )}
+  </div>
+)}
 
       {/* Logout */}
       {user && (

@@ -3,9 +3,9 @@ import { createContext, useContext, useState } from "react";
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-const [user, setUser] = useState(
-  JSON.parse(localStorage.getItem("user")) || null
-);
+  const [user, setUser] = useState(
+    JSON.parse(localStorage.getItem("user")) || null
+  );
   const [token, setToken] = useState(
     localStorage.getItem("token")
   );
@@ -23,8 +23,31 @@ const [user, setUser] = useState(
     localStorage.clear();
   };
 
+  // ✅ NEW: Refresh user after payment
+  const refreshUser = async () => {
+    if (!token) return;
+
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user);
+        localStorage.setItem("user", JSON.stringify(data.user));
+      }
+    } catch (err) {
+      console.error("Failed to refresh user", err);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider
+      value={{ user, token, login, logout, refreshUser }}
+    >
       {children}
     </AuthContext.Provider>
   );

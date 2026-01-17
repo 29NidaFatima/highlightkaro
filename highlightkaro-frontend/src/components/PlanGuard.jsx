@@ -65,18 +65,10 @@ const PlanGuard = ({ requiredPlan, children, darkMode }) => {
           to unlock this feature
         </p>
 
-        {/* ✅ CHANGE: real navigation */}
-        <button
-          onClick={() => navigate("/upgrade")}
-          className={`w-full py-2.5 rounded-lg text-sm font-medium transition
-          ${
-            darkMode
-              ? "bg-yellow-500 text-black hover:bg-yellow-400"
-              : "bg-cyan-500 text-white hover:bg-cyan-600"
-          }`}
-        >
-          Upgrade Plan
-        </button>
+
+
+
+
       </div>
     );
   }
