@@ -26,14 +26,14 @@ const HighlightKaro = () => {
     height: 0,
   });
 
-const handleUpgrade = async (plan) => {
-  try {
-    const data = await createPaymentLink(plan, token);
-    window.location.href = data.paymentLinkUrl; // Redirect to Razorpay
-  } catch (err) {
-    alert(err.message);
-  }
-};
+  const handleUpgrade = async (plan) => {
+    try {
+      const data = await createPaymentLink(plan, token);
+      window.location.href = data.paymentLinkUrl; // Redirect to Razorpay
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
 
   const [croppedImage, setCroppedImage] = useState(null);
@@ -57,12 +57,12 @@ const handleUpgrade = async (plan) => {
   const [animationTime, setAnimationTime] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [tapStart, setTapStart] = useState(null);
-const { user, token, logout } = useAuth();
+  const { user, token, logout } = useAuth();
 
-const navigate = useNavigate();
+  const navigate = useNavigate();
 
-const plan = user?.plan || "free";
-const planConfig = PLAN_CONFIG[plan];
+  const plan = user?.plan || "free";
+  const planConfig = PLAN_CONFIG[plan];
 
 
   const canvasRef = useRef(null);
@@ -88,10 +88,10 @@ const planConfig = PLAN_CONFIG[plan];
   ]);
 
   useEffect(() => {
-  if (!planConfig.darkMode && darkMode) {
-    setDarkMode(false);
-  }
-}, [plan, darkMode]);
+    if (!planConfig.darkMode && darkMode) {
+      setDarkMode(false);
+    }
+  }, [plan, darkMode]);
 
   useEffect(() => {
     let animationFrame;
@@ -215,19 +215,19 @@ const planConfig = PLAN_CONFIG[plan];
 
     ctx.drawImage(displayImg, 0, 0, canvas.width, canvas.height);
     // 🔐 WATERMARK — FREE PLAN ONLY
-if (planConfig.watermark) {
-  ctx.save();                
-  ctx.globalAlpha = 0.15;
-  ctx.font = "24px Arial";
-  ctx.fillStyle = "#000";
-  ctx.textAlign = "right";
-  ctx.fillText(
-    "HighlightKaro",
-    canvas.width - 16,
-    canvas.height - 16
-  );
-  ctx.restore();              
-}
+    if (planConfig.watermark) {
+      ctx.save();
+      ctx.globalAlpha = 0.15;
+      ctx.font = "24px Arial";
+      ctx.fillStyle = "#000";
+      ctx.textAlign = "right";
+      ctx.fillText(
+        "HighlightKaro",
+        canvas.width - 16,
+        canvas.height - 16
+      );
+      ctx.restore();
+    }
 
     if (cropMode) {
       const sx = cropRect.x * scale;
@@ -481,14 +481,14 @@ if (planConfig.watermark) {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         const errorMsg = errorData.error || "Export failed";
-        
+
         // Handle export limit error specifically
         if (res.status === 403 && errorData.limit) {
           throw new Error(
             `Daily export limit reached (${errorData.limit} exports). Upgrade to Basic plan for unlimited exports.`
           );
         }
-        
+
         throw new Error(errorMsg);
       }
 
@@ -503,7 +503,7 @@ if (planConfig.watermark) {
       document.body.removeChild(a);
 
       URL.revokeObjectURL(url);
-      
+
       // Clear pending export state
       clearExportState();
     } catch (err) {
@@ -529,7 +529,7 @@ if (planConfig.watermark) {
     if (!user || !token) {
       // Save export state and redirect to login
       const displayImg = croppedImage || image;
-      
+
       // Convert image to data URL for storage
       const tempCanvas = document.createElement("canvas");
       tempCanvas.width = displayImg.width;
@@ -692,105 +692,140 @@ if (planConfig.watermark) {
       </div>
 
       {/* Header */}
-{/* Header */}
-<div
-  className={`relative z-10 border-b ${
-      darkMode
-        ? "bg-gray-900 border-yellow-500/20"
-        : "bg-white/80 border-cyan-200"
-  } backdrop-blur-sm`}
->
-  <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-    
-    {/* Left: Logo & Tagline */}
-    <div>
-      <h1
-        className={`text-3xl font-bold ${
-          darkMode ? "text-yellow-400" : "text-cyan-600"
-        }`}
+      {/* Header */}
+      <div
+        className={`relative z-10 border-b ${darkMode
+          ? "bg-gray-900 border-yellow-500/20"
+          : "bg-white/80 border-cyan-200"
+          } backdrop-blur-sm`}
       >
-        HighlightKaro
-      </h1>
-      <p
-        className={`text-sm ${
-          darkMode ? "text-gray-400" : "text-gray-600"
-        }`}
-      >
-        Create CapCut-style highlight animations in seconds
-      </p>
-    </div>
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
 
-    {/* Right: Dark Mode + Logout */}
-    <div className="flex items-center gap-3">
-      
-      {/* Dark mode toggle */}
-      <button
-        onClick={() => setDarkMode(!darkMode)}
-        disabled={!planConfig.darkMode}
-        className={`p-3 rounded-full transition-all ${
-          darkMode
-            ? "bg-yellow-500 text-black hover:bg-yellow-400"
-            : "bg-cyan-500 text-white hover:bg-cyan-600"
-        } ${
-          !planConfig.darkMode && "opacity-50 cursor-not-allowed"
-        }`}
-      >
-        {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-      </button>
-{/* Plan badge + Upgrade */}
-{user && (
-  <div className="flex items-center gap-2 mr-2">
-    <span
-      className={`text-xs px-3 py-1 rounded-full font-semibold ${
-        darkMode
-          ? "bg-gray-800 text-yellow-400"
-          : "bg-cyan-100 text-cyan-700"
-      }`}
-    >
-      {user.plan.toUpperCase()}
-    </span>
+          {/* Left: Logo & Tagline */}
+          <div>
+            <h1
+              className={`text-3xl font-bold ${darkMode ? "text-yellow-400" : "text-cyan-600"
+                }`}
+            >
+              HighlightKaro
+            </h1>
+            <p
+              className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"
+                }`}
+            >
+              Create CapCut-style highlight animations in seconds
+            </p>
+          </div>
 
-    {user.plan === "free" && (
-    <button
-  onClick={() => navigate("/upgrade")}
-  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm"
->
-  Upgrade
-</button>
 
-    )}
+          {/* Right actions */}
+          <div className="flex items-center gap-3">
 
-    {user.plan === "basic19" && (
-      <button
-        onClick={() => handleUpgrade("pro99")}
-        className="px-3 py-1 text-xs rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold"
-      >
-        Go Pro ₹99
-      </button>
-    )}
-  </div>
-)}
+            {/* Dark mode toggle */}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              disabled={!planConfig.darkMode}
+              className={`relative p-2.5 rounded-xl transition-all duration-300
+      hover:scale-[1.04] active:scale-95
+      shadow-[0_4px_20px_rgba(0,0,0,0.08)]
+      ${darkMode
+                  ? "bg-yellow-400 text-black hover:bg-yellow-300"
+                  : "bg-cyan-500 text-white hover:bg-cyan-600"}
+      ${!planConfig.darkMode && "opacity-40 cursor-not-allowed"}
+    `}
+            >
+              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
 
-      {/* Logout */}
-      {user && (
-<button
-  onClick={() => {
-    logout();
-    navigate("/");
-  }}
-  className={`px-5 py-2 text-sm rounded-lg font-medium transition-all
-    ${darkMode
-      ? "bg-yellow-500 text-black hover:bg-yellow-400"
-      : "bg-cyan-500 text-white hover:bg-cyan-600"}
-  `}
->
-  Logout
-</button>
+            {/* Floating Plan + Action Capsule */}
+            {user && (
+              <div
+                className={`group flex items-center gap-3 px-4 py-2 rounded-2xl
+        backdrop-blur-xl transition-all duration-300
+        shadow-[0_10px_30px_rgba(0,0,0,0.12)]
+        hover:shadow-[0_14px_40px_rgba(0,0,0,0.16)]
+        ${darkMode
+                    ? "bg-gray-900/80 border border-yellow-500/20"
+                    : "bg-white/80 border border-cyan-200"}
+      `}
+              >
+                {/* Plan status */}
+                <div className="flex flex-col leading-tight">
 
-      )}
-    </div>
-  </div>
-</div>
+                  <span className={`text-sm font-semibold
+          ${darkMode ? "text-yellow-400" : "text-cyan-700"}`}>
+                    {user.plan.toUpperCase()}
+                  </span>
+                </div>
+
+                {/* Divider */}
+                <div className={`w-px h-6
+        ${darkMode ? "bg-yellow-500/20" : "bg-cyan-200"}`} />
+
+                {/* Upgrade CTA */}
+                {user.plan === "free" && (
+                  <button
+                    onClick={() => navigate("/upgrade")}
+                    className="ml-1 px-3 py-2 rounded-md  bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-medium transition"
+                  >
+                    Upgrade
+                  </button>
+                )}
+
+                {user.plan === "basic19" && (
+                  <button
+                    onClick={() => handleUpgrade("pro99")}
+                    className="
+    px-4 py-1.5 rounded-xl text-xs font-semibold
+    bg-gradient-to-br from-cyan-600 to-indigo-600
+    text-white
+    shadow-[0_8px_24px_rgba(79,70,229,0.35)]
+    hover:from-cyan-700 hover:to-indigo-700
+    hover:shadow-[0_12px_32px_rgba(79,70,229,0.45)]
+    active:scale-95
+    transition-all duration-300
+  "
+                  >
+                    Go Pro
+                  </button>
+
+                )}
+              </div>
+            )}
+
+            {/* Account action */}
+            {user && (
+              <button
+                onClick={() => {
+                  logout();
+                  navigate("/");
+                }}
+                className={`px-4 py-2 rounded-xl text-sm font-medium
+        backdrop-blur-md transition-all duration-300
+        hover:scale-[1.03] active:scale-95
+        ${darkMode
+                    ? "bg-gray-800/70 text-gray-300 hover:bg-gray-700"
+                    : "bg-white/70 border border-cyan-200 text-cyan-700 hover:bg-cyan-50"}
+      `}
+              >
+                Logout
+              </button>
+
+            )}
+            {/* {!user && (
+  <button
+    onClick={() => navigate("/register")}
+    className="px-4 py-2 rounded-lg text-sm
+      bg-cyan-500 hover:bg-cyan-600 text-white"
+  >
+    Sign up
+  </button>
+)} */}
+
+          </div>
+
+        </div>
+      </div>
 
 
       {/* Main layout */}
@@ -904,32 +939,32 @@ if (planConfig.watermark) {
 
                 {/* Highlight color */}
 
-<div>
-  <label className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-    <Palette size={16} className="inline mr-2" />
-    Highlight Color
-  </label>
+                <div>
+                  <label className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                    <Palette size={16} className="inline mr-2" />
+                    Highlight Color
+                  </label>
 
-  <div className="flex gap-2">
-    {planConfig.colors === "ALL"
-      ? ["#ffff00", "#ff0000", "#00ffff", "#00ff00"].map((color) => (
-          <button
-            key={color}
-            onClick={() => setHighlightColor(color)}
-            style={{ backgroundColor: color }}
-            className="w-8 h-8 rounded border"
-          />
-        ))
-      : planConfig.colors.map((color) => (
-          <button
-            key={color}
-            onClick={() => setHighlightColor(color)}
-            style={{ backgroundColor: color }}
-            className="w-8 h-8 rounded border"
-          />
-        ))}
-  </div>
-</div>
+                  <div className="flex gap-2">
+                    {planConfig.colors === "ALL"
+                      ? ["#ffff00", "#ff0000", "#00ffff", "#00ff00"].map((color) => (
+                        <button
+                          key={color}
+                          onClick={() => setHighlightColor(color)}
+                          style={{ backgroundColor: color }}
+                          className="w-8 h-8 rounded border"
+                        />
+                      ))
+                      : planConfig.colors.map((color) => (
+                        <button
+                          key={color}
+                          onClick={() => setHighlightColor(color)}
+                          style={{ backgroundColor: color }}
+                          className="w-8 h-8 rounded border"
+                        />
+                      ))}
+                  </div>
+                </div>
 
 
                 {/* Opacity */}
@@ -978,30 +1013,30 @@ if (planConfig.watermark) {
                   >
                     Animation Type
                   </label>
-<select
-  value={animationType}
-  onChange={(e) => setAnimationType(e.target.value)}
-  className={`w-full p-2 rounded-lg text-sm border ${darkMode
-    ? "bg-gray-800 text-gray-300 border-gray-700"
-    : "bg-gray-100 text-gray-700 border-gray-300"
-  }`}
->
-  {planConfig.animations === "ALL" ? (
-    <>
-      <option value="left-to-right">Left → Right</option>
-      <option value="down-up">Down → Up</option>
-      <option value="rise">Rise</option>
-      <option value="glow">Glow Swipe</option>
-      <option value="underline">Underline</option>
-    </>
-  ) : (
-    planConfig.animations.map((anim) => (
-      <option key={anim} value={anim}>
-        {anim}
-      </option>
-    ))
-  )}
-</select>
+                  <select
+                    value={animationType}
+                    onChange={(e) => setAnimationType(e.target.value)}
+                    className={`w-full p-2 rounded-lg text-sm border ${darkMode
+                      ? "bg-gray-800 text-gray-300 border-gray-700"
+                      : "bg-gray-100 text-gray-700 border-gray-300"
+                      }`}
+                  >
+                    {planConfig.animations === "ALL" ? (
+                      <>
+                        <option value="left-to-right">Left → Right</option>
+                        <option value="down-up">Down → Up</option>
+                        <option value="rise">Rise</option>
+                        <option value="glow">Glow Swipe</option>
+                        <option value="underline">Underline</option>
+                      </>
+                    ) : (
+                      planConfig.animations.map((anim) => (
+                        <option key={anim} value={anim}>
+                          {anim}
+                        </option>
+                      ))
+                    )}
+                  </select>
 
                 </div>
 
@@ -1136,20 +1171,20 @@ if (planConfig.watermark) {
                   onClick={handleExport}
                   disabled={highlights.length === 0 || exporting}
                   className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${highlights.length === 0 || exporting
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : !user
-                        ? darkMode
-                          ? "bg-cyan-600 hover:bg-cyan-500 text-white"
-                          : "bg-cyan-500 hover:bg-cyan-600 text-white"
-                        : darkMode
-                          ? "bg-green-600 hover:bg-green-500 text-white"
-                          : "bg-green-500 hover:bg-green-600 text-white"
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : !user
+                      ? darkMode
+                        ? "bg-cyan-600 hover:bg-cyan-500 text-white"
+                        : "bg-cyan-500 hover:bg-cyan-600 text-white"
+                      : darkMode
+                        ? "bg-green-600 hover:bg-green-500 text-white"
+                        : "bg-green-500 hover:bg-green-600 text-white"
                     }`}
                 >
                   <Download size={20} />
                   {exporting ? "Exporting..." : user ? "Export Video" : "Login to Export"}
                 </button>
-                
+
                 {/* Export limit info for free plan */}
                 {user && planConfig.exportLimit && (
                   <p className="text-xs text-center text-gray-500 mt-2">

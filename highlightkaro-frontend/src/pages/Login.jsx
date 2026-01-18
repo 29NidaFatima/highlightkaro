@@ -83,7 +83,7 @@ export default function Login() {
       }
 
       login(data);
-      
+
       // Redirect based on return parameter
       const returnPath = searchParams.get("return");
       if (returnPath === "export") {
@@ -105,7 +105,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cyan-50 via-blue-50 to-sky-50 px-4">
       <div className="w-full max-w-sm bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-cyan-200 p-6">
-        
+
         {/* Title */}
         <h2 className="text-2xl font-bold text-center text-cyan-600 mb-1">
           Welcome Back
@@ -125,9 +125,8 @@ export default function Login() {
             type="email"
             placeholder="you@example.com"
             value={email}
-            className={`w-full p-2.5 rounded-lg border ${
-              emailError ? "border-red-300" : "border-gray-300"
-            } focus:outline-none focus:ring-2 focus:ring-cyan-400`}
+            className={`w-full p-2.5 rounded-lg border ${emailError ? "border-red-300" : "border-gray-300"
+              } focus:outline-none focus:ring-2 focus:ring-cyan-400`}
             onChange={handleEmailChange}
             onBlur={() => validateEmail(email)}
             disabled={isSubmitting}
@@ -146,9 +145,8 @@ export default function Login() {
             type="password"
             placeholder="••••••••"
             value={password}
-            className={`w-full p-2.5 rounded-lg border ${
-              passwordError ? "border-red-300" : "border-gray-300"
-            } focus:outline-none focus:ring-2 focus:ring-cyan-400`}
+            className={`w-full p-2.5 rounded-lg border ${passwordError ? "border-red-300" : "border-gray-300"
+              } focus:outline-none focus:ring-2 focus:ring-cyan-400`}
             onChange={handlePasswordChange}
             onBlur={() => validatePassword(password)}
             disabled={isSubmitting}
@@ -162,19 +160,24 @@ export default function Login() {
         <button
           onClick={handleLogin}
           disabled={!isFormValid || isSubmitting}
-          className={`w-full py-3 rounded-lg font-semibold text-white transition-all duration-200 shadow-md ${
-            !isFormValid || isSubmitting
+          className={`w-full py-3 rounded-lg font-semibold text-white transition-all duration-200 shadow-md ${!isFormValid || isSubmitting
               ? "bg-gray-400 cursor-not-allowed"
               : "bg-cyan-500 hover:bg-cyan-600"
-          }`}
+            }`}
         >
           {isSubmitting ? "Logging in..." : "Login"}
         </button>
-
-        {/* Footer */}
-        <p className="text-xs text-center text-gray-500 mt-4">
-          Secure login • Plan-based features enabled
+        {/* Register CTA */}
+        <p className="text-sm text-center text-gray-600 mt-4">
+          Don’t have an account?{" "}
+          <span
+            onClick={() => navigate("/register")}
+            className="text-cyan-600 font-semibold cursor-pointer hover:underline"
+          >
+            Create one
+          </span>
         </p>
+
       </div>
     </div>
   );
