@@ -43,26 +43,35 @@ Perfect for creators, editors, educators, or anyone who needs clean animated hig
 
 ## 📁 Folder Structure
 ```
-Directory structure:
-└──highlightkaro/
+ highlightkaro/
     ├── README.md
     ├── highlightkaro-backend/
     │   ├── app.js
+    │   ├── DESIGN_CLOUD_SAVE.md
     │   ├── package.json
+    │   ├── RAZORPAY_TESTING_GUIDE.md
     │   ├── config/
-    │   │   └── db.js
+    │   │   ├── db.js
+    │   │   └── planConfig.js
     │   ├── controllers/
-    │   │   └── authController.js
+    │   │   ├── authController.js
+    │   │   └── paymentController.js
     │   ├── middleware/
     │   │   ├── auth.middleware.js
-    │   │   └── plan.middleware.js
+    │   │   ├── plan.middleware.js
+    │   │   └── validation.middleware.js
     │   ├── models/
+    │   │   ├── ExportLog.js
+    │   │   ├── Payment.js
     │   │   └── User.js
     │   ├── routes/
     │   │   ├── auth.routes.js
+    │   │   ├── payment.routes.js
     │   │   └── render.routes.js
     │   └── utils/
-    │       └── jwt.js
+    │       ├── jwt.js
+    │       ├── planFeatures.js
+    │       └── watermark.js
     └── highlightkaro-frontend/
         ├── README.md
         ├── eslint.config.js
@@ -79,16 +88,25 @@ Directory structure:
             ├── main.jsx
             ├── api/
             │   ├── authApi.js
+            │   ├── paymentApi.js
             │   └── renderApi.js
             ├── components/
             │   └── PlanGuard.jsx
+            ├── config/
+            │   └── planConfig.js
             ├── context/
             │   └── AuthContext.jsx
             ├── pages/
             │   ├── Login.jsx
-            │   └── Register.jsx
+            │   ├── PaymentRedirect.jsx
+            │   ├── PaymentSuccess.jsx
+            │   ├── Register.jsx
+            │   └── Upgrade.jsx
             └── utils/
-                └── auth.js
+                ├── auth.js
+                ├── exportState.js
+                └── planFeatures.js
+
 
 
 
