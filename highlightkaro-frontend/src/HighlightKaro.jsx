@@ -15,12 +15,15 @@ import { useNavigate } from "react-router-dom";
 import { saveExportState, getExportState, clearExportState } from "./utils/exportState";
 import { createPaymentLink } from "./api/paymentApi";
 import { fetchPricing } from "./api/pricingApi";
+import { renderVideo } from "./api/renderApi";
+import { PLAN_CODES } from "./config/pricingConfig";
 
 
 const HighlightKaro = () => {
 
   const [darkMode, setDarkMode] = useState(false);
   const [image, setImage] = useState(null);
+  const [pricingData, setPricingData] = useState(null);
   const [recommendedRegion, setRecommendedRegion] = useState("global");
   const [imageDimensions, setImageDimensions] = useState({
     width: 0,
@@ -30,6 +33,7 @@ const HighlightKaro = () => {
   // Fetch recommended region on mount
   useEffect(() => {
     fetchPricing().then((data) => {
+      setPricingData(data);
       if (data?.recommendedRegion) {
         setRecommendedRegion(data.recommendedRegion);
       }
@@ -41,11 +45,34 @@ const HighlightKaro = () => {
   const handleUpgrade = async (plan) => {
     try {
       // Step 1: Call createPaymentLink with plan, region, and token
-      // FIX: Added recommendedRegion to arguments to match API signature (plan, region, token)
       const data = await createPaymentLink(plan, recommendedRegion, token);
       
-      // Step 3: Immediately redirect to Razorpay
-      window.location.href = data.paymentLinkUrl; 
+      // Step 2: Redirect to intermediate page (like Upgrade page does)
+      const currentPricing = pricingData?.pricing?.[recommendedRegion] || pricingData?.pricing?.global;
+      const planKey = plan === "basic30" ? 'basic' : 'pro'; // using hardcoded mapping based on plan codes
+      // Better to use PLAN_CODES if available or just infer
+      
+      // We need amount/currency for the loading screen
+      let amount = 0;
+      let currency = "USD";
+      let billingCycle = "/ month";
+      
+      if (currentPricing) {
+        amount = currentPricing[planKey]?.monthly || 0;
+        currency = currentPricing.currency;
+        billingCycle = currentPricing.cadenceLabel;
+      }
+
+      navigate("/payment-redirect", {
+        state: {
+          paymentLink: data.paymentLinkUrl,
+          plan: plan === "basic30" ? 'Basic' : 'Pro',
+          amount: amount,
+          currency: currency,
+          billingCycle: billingCycle
+        }
+      });
+
     } catch (err) {
       alert(err.message || "Payment initiation failed");
     }
@@ -480,29 +507,7 @@ const HighlightKaro = () => {
       formData.append("fps", settings.fps);
       formData.append("anim", hl.animation || "left-to-right");
 
-      const res = await fetch(`${API_BASE_URL}/render`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        const errorMsg = errorData.error || "Export failed";
-
-        // Handle export limit error specifically
-        if (res.status === 403 && errorData.limit) {
-          throw new Error(
-            `Daily export limit reached (${errorData.limit} exports). Upgrade to Basic plan for unlimited exports.`
-          );
-        }
-
-        throw new Error(errorMsg);
-      }
-
-      const videoBlob = await res.blob();
+      const videoBlob = await renderVideo(token, formData);
       const url = URL.createObjectURL(videoBlob);
 
       const a = document.createElement("a");
@@ -522,7 +527,7 @@ const HighlightKaro = () => {
         ? err.message
         : `Export failed: ${err.message}`;
       alert(errorMessage);
-      throw err;
+      // throw err; // Don't rethrow, just alert
     } finally {
       setExporting(false);
     }
