@@ -4,34 +4,50 @@ import {
   Moon,
   Upload,
   Crop,
-  Square,
   Palette,
   Download,
   Play,
 } from "lucide-react";
-import PlanGuard from "./components/PlanGuard";
 import { useAuth } from "./context/AuthContext";
 import { PLAN_CONFIG } from "./config/planConfig";
+import { API_BASE_URL } from "./config/api";
 import { useNavigate } from "react-router-dom";
 import { saveExportState, getExportState, clearExportState } from "./utils/exportState";
 import { createPaymentLink } from "./api/paymentApi";
+import { fetchPricing } from "./api/pricingApi";
 
 
 const HighlightKaro = () => {
 
   const [darkMode, setDarkMode] = useState(false);
   const [image, setImage] = useState(null);
+  const [recommendedRegion, setRecommendedRegion] = useState("global");
   const [imageDimensions, setImageDimensions] = useState({
     width: 0,
     height: 0,
   });
 
+  // Fetch recommended region on mount
+  useEffect(() => {
+    fetchPricing().then((data) => {
+      if (data?.recommendedRegion) {
+        setRecommendedRegion(data.recommendedRegion);
+      }
+    }).catch(() => {
+      // Ignore errors, default to global
+    });
+  }, []);
+
   const handleUpgrade = async (plan) => {
     try {
-      const data = await createPaymentLink(plan, token);
-      window.location.href = data.paymentLinkUrl; // Redirect to Razorpay
+      // Step 1: Call createPaymentLink with plan, region, and token
+      // FIX: Added recommendedRegion to arguments to match API signature (plan, region, token)
+      const data = await createPaymentLink(plan, recommendedRegion, token);
+      
+      // Step 3: Immediately redirect to Razorpay
+      window.location.href = data.paymentLinkUrl; 
     } catch (err) {
-      alert(err.message);
+      alert(err.message || "Payment initiation failed");
     }
   };
 
@@ -62,7 +78,7 @@ const HighlightKaro = () => {
   const navigate = useNavigate();
 
   const plan = user?.plan || "free";
-  const planConfig = PLAN_CONFIG[plan];
+  const planConfig = PLAN_CONFIG[plan] || PLAN_CONFIG.free;
 
 
   const canvasRef = useRef(null);
@@ -192,7 +208,7 @@ const HighlightKaro = () => {
       ctx.fillStyle = darkMode ? "#1a1a1a" : "#ecfeff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = darkMode ? "#666" : "#999";
-      ctx.font = "20px Arial";
+      ctx.font = "500 18px Inter, system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(
         "Upload an image to start",
@@ -218,7 +234,7 @@ const HighlightKaro = () => {
     if (planConfig.watermark) {
       ctx.save();
       ctx.globalAlpha = 0.15;
-      ctx.font = "24px Arial";
+      ctx.font = "600 20px Inter, system-ui, sans-serif";
       ctx.fillStyle = "#000";
       ctx.textAlign = "right";
       ctx.fillText(
@@ -327,8 +343,6 @@ const HighlightKaro = () => {
 
 
   const handleCanvasMouseDown = (e) => {
-    console.log("DOWN");
-
     if (!image || cropMode) {
       if (cropMode) handleCropMouseDown(e);
       return;
@@ -347,8 +361,6 @@ const HighlightKaro = () => {
   };
 
   const handleCanvasMouseMove = (e) => {
-    console.log("MOVE");
-
     if (!canvasRef.current || !image) return;
 
     const canvas = canvasRef.current;
@@ -388,8 +400,6 @@ const HighlightKaro = () => {
 
 
   const handleCanvasMouseUp = () => {
-    console.log("UP");
-
     if (cropMode) {
       isDraggingCrop.current = false;
     }
@@ -470,7 +480,7 @@ const HighlightKaro = () => {
       formData.append("fps", settings.fps);
       formData.append("anim", hl.animation || "left-to-right");
 
-      const res = await fetch("http://localhost:5000/render", {
+      const res = await fetch(`${API_BASE_URL}/render`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -691,7 +701,7 @@ const HighlightKaro = () => {
         </div>
       </div>
 
-      {/* Header */}
+  
       {/* Header */}
       <div
         className={`relative z-10 border-b ${darkMode
@@ -721,21 +731,45 @@ const HighlightKaro = () => {
           {/* Right actions */}
           <div className="flex items-center gap-3">
 
-            {/* Dark mode toggle */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              disabled={!planConfig.darkMode}
-              className={`relative p-2.5 rounded-xl transition-all duration-300
-      hover:scale-[1.04] active:scale-95
-      shadow-[0_4px_20px_rgba(0,0,0,0.08)]
-      ${darkMode
-                  ? "bg-yellow-400 text-black hover:bg-yellow-300"
-                  : "bg-cyan-500 text-white hover:bg-cyan-600"}
-      ${!planConfig.darkMode && "opacity-40 cursor-not-allowed"}
-    `}
-            >
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
+            {/* Legendary Dark Mode Toggle */}
+            <div className="relative ">
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                disabled={!planConfig.darkMode}
+                aria-label="Legendary Dark Mode"
+                className={`relative p-2.5 rounded-xl transition-all duration-300
+                  hover:scale-105 active:scale-95
+                  shadow-[0_4px_20px_rgba(0,0,0,0.08)]
+                  ${darkMode
+                    ? "bg-yellow-400 text-black hover:bg-yellow-300"
+                    : "bg-cyan-500 text-white hover:bg-cyan-600"}
+                  ${!planConfig.darkMode && "opacity-40 cursor-not-allowed"}
+                `}
+              >
+                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+              
+              {/* Tooltip */}
+              <div className={`absolute right-0 top-full mt-2 w-48 p-3 rounded-lg text-xs
+                opacity-0 invisible group-hover:opacity-100 group-hover:visible
+                transition-all duration-200 z-50 pointer-events-none
+                ${darkMode 
+                  ? "bg-gray-800 text-gray-200 border border-yellow-500/20" 
+                  : "bg-white text-gray-700 border border-cyan-200 shadow-lg"}
+              `}>
+                <p className={`font-semibold mb-1 ${darkMode ? "text-yellow-400" : "text-cyan-600"}`}>
+                  {planConfig.darkMode ? "Legendary Dark Mode" : "Legendary Dark Mode (Locked)"}
+                </p>
+                <p className="leading-relaxed">
+                  Galaxy interface with reduced eye strain
+                </p>
+                {!planConfig.darkMode && (
+                  <p className="mt-1.5 text-cyan-500 font-medium">
+                    Upgrade to Basic to unlock
+                  </p>
+                )}
+              </div>
+            </div>
 
             {/* Floating Plan + Action Capsule */}
             {user && (
@@ -772,7 +806,7 @@ const HighlightKaro = () => {
                   </button>
                 )}
 
-                {user.plan === "basic19" && (
+                {user.plan === "basic30" && (
                   <button
                     onClick={() => handleUpgrade("pro99")}
                     className="
@@ -812,16 +846,6 @@ const HighlightKaro = () => {
               </button>
 
             )}
-            {/* {!user && (
-  <button
-    onClick={() => navigate("/register")}
-    className="px-4 py-2 rounded-lg text-sm
-      bg-cyan-500 hover:bg-cyan-600 text-white"
-  >
-    Sign up
-  </button>
-)} */}
-
           </div>
 
         </div>

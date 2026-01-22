@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Upgrade from "./pages/Upgrade";
 import PaymentRedirect from "./pages/PaymentRedirect";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentFailed from "./pages/PaymentFailed";
 import Register from "./pages/Register";
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
       <Route path="/upgrade" element={<Upgrade />} />
       <Route path="/payment-redirect" element={<PaymentRedirect />} />
       <Route path="/payment-success" element={<PaymentSuccess />} />
+      <Route path="/payment-failed" element={<PaymentFailed />} />
     </Routes>
   );
 }

@@ -2,7 +2,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 // ✅ CHANGE: consistent naming
-const PLAN_ORDER = ["free", "basic19", "pro99"];
+const PLAN_ORDER = ["free", "basic30", "pro99"];
 
 const PlanGuard = ({ requiredPlan, children, darkMode }) => {
   const { user } = useAuth();
