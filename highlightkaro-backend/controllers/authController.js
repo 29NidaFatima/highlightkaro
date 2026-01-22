@@ -41,9 +41,9 @@ exports.login = async (req, res) => {
 
     // Validation middleware has already validated email format
     // Explicitly select password (required for comparison)
-const user = await User.findOne({
-  email: email.toLowerCase()
-}).select("+password");
+    const user = await User.findOne({
+      email: email.toLowerCase()
+    }).select("+password");
 
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials" });
@@ -79,5 +79,31 @@ const user = await User.findOne({
   } catch (err) {
     // NEVER log password in error messages
     res.status(500).json({ error: "Login failed. Please try again." });
+  }
+};
+
+/**
+ * Get current user profile
+ * GET /api/auth/me
+ * Protected route - requires authentication
+ */
+exports.getMe = async (req, res) => {
+  try {
+    // req.user is already populated by auth middleware
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    res.json({
+      user: {
+        name: user.name,
+        email: user.email,
+        plan: user.plan,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch user profile" });
   }
 };
