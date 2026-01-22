@@ -2,6 +2,8 @@ const razorpay = require("razorpay");
 const crypto = require("crypto");
 const User = require("../models/User");
 const Payment = require("../models/Payment");
+const { toMinorUnits } = require("../config/pricingConfig");
+const pricingService = require("../services/pricing.service");
 
 // Initialize Razorpay
 const razorpayInstance = new razorpay({
@@ -9,16 +11,10 @@ const razorpayInstance = new razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// Plan configuration (amounts in paise)
-const PLAN_CONFIG = {
-  basic19: {
-    amount: 1900, // ₹19 in paise
-    name: "Basic Plan",
-  },
-  pro99: {
-    amount: 9900, // ₹99 in paise
-    name: "Pro Plan",
-  },
+// Plan names (display only). Amounts/currency are backend-driven via pricingConfig.
+const PLAN_NAME = {
+  basic30: "Basic Plan",
+  pro99: "Pro Plan",
 };
 
 /**
@@ -27,30 +23,38 @@ const PLAN_CONFIG = {
  */
 exports.createPaymentLink = async (req, res) => {
   try {
-    const { plan } = req.body;
+    const { plan, region } = req.body;
     const userId = req.user._id;
 
     // Validate plan
-    if (!plan || !PLAN_CONFIG[plan]) {
+    if (!plan || !PLAN_NAME[plan]) {
       return res.status(400).json({ error: "Invalid plan" });
     }
 
     // Prevent downgrades (only allow upgrades)
     const currentPlan = req.user.plan;
-    const planOrder = ["free", "basic19", "pro99"];
+    const planOrder = ["free", "basic30", "pro99"];
     if (planOrder.indexOf(currentPlan) >= planOrder.indexOf(plan)) {
       return res.status(400).json({
         error: "You can only upgrade to a higher plan",
       });
     }
 
-    const planConfig = PLAN_CONFIG[plan];
+    // Decide pricing from backend using requested region (or default to global if missing/invalid)
+    // We trust the region selection from UI (user choice), but the price is strictly from backend.
+    const planPricing = pricingService.getPlanPricing(plan, region);
+
+    if (!planPricing || typeof planPricing.amount !== "number") {
+      return res.status(500).json({ error: "Pricing is not available for this plan" });
+    }
+
+    const amountMinor = toMinorUnits(planPricing.amount);
 
     // Create payment link
     const paymentLinkOptions = {
-      amount: planConfig.amount,
-      currency: "INR",
-      description: `Upgrade to ${planConfig.name}`,
+      amount: amountMinor,
+      currency: planPricing.currency,
+      description: `Upgrade to ${PLAN_NAME[plan]}`,
       customer: {
         name: req.user.name,
         email: req.user.email,
@@ -71,7 +75,7 @@ exports.createPaymentLink = async (req, res) => {
     await Payment.create({
       userId,
       plan,
-      amount: planConfig.amount,
+      amount: amountMinor,
       razorpayPaymentLinkId: paymentLink.id,
       status: "pending",
     });
@@ -79,7 +83,9 @@ exports.createPaymentLink = async (req, res) => {
     res.json({
       paymentLinkId: paymentLink.id,
       paymentLinkUrl: paymentLink.short_url,
-      amount: planConfig.amount,
+      amount: amountMinor,
+      currency: planPricing.currency,
+      region: planPricing.region,
       plan: plan,
     });
   } catch (err) {

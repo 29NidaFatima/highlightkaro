@@ -10,13 +10,13 @@ const PaymentSchema = new mongoose.Schema(
 
     plan: {
       type: String,
-      enum: ["basic19", "pro99"],
+      enum: ["basic30", "pro99"],
       required: true,
     },
 
     amount: {
       type: Number,
-      required: true, // in paise (₹19 = 1900, ₹99 = 9900)
+      required: true, 
     },
 
     razorpayPaymentLinkId: {
@@ -28,7 +28,7 @@ const PaymentSchema = new mongoose.Schema(
     razorpayPaymentId: {
       type: String,
       unique: true,
-      sparse: true, // Allow null, but if present, must be unique
+      sparse: true,
     },
 
     status: {
