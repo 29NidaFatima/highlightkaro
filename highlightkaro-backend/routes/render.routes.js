@@ -7,9 +7,9 @@ const plan = require("../middleware/plan.middleware");
 router.post(
   "/render",
   auth,
-  plan("basic19"),
+  plan("basic30"),
   (req, res) => {
-    res.json({ message: "Render allowed for basic19+" });
+    res.json({ message: "Render allowed for basic30+" });
   }
 );
 

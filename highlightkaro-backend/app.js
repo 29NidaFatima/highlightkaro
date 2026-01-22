@@ -15,6 +15,7 @@ const plan = require("./middleware/plan.middleware");
 const authRoutes = require("./routes/auth.routes");
 const renderRoutes = require("./routes/render.routes");
 const paymentRoutes = require("./routes/payment.routes");
+const pricingRoutes = require("./routes/pricing.routes");
 const {
   validateColor,
   validateAnimation,
@@ -51,7 +52,6 @@ app.use(
   })
 );
 
-app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); 
 const PORT = process.env.PORT || 5000;
@@ -59,6 +59,7 @@ const PORT = process.env.PORT || 5000;
 app.use("/api/auth", authRoutes);
 app.use("/api", renderRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/pricing", pricingRoutes);
 
 
 // Multer setup for file uploads
