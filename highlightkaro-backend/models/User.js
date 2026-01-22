@@ -15,7 +15,7 @@ const UserSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      index: true, // Index for faster queries
+      index: true, 
       match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email format"],
     },
 
@@ -23,13 +23,13 @@ const UserSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
       minlength: [8, "Password must be at least 8 characters long"],
-      select: false, // Never include password in queries by default
+      select: false, 
     },
 
     plan: {
       type: String,
       enum: {
-        values: ["free", "basic19", "pro99"],
+        values: ["free", "basic30", "pro99"],
         message: "Invalid plan value",
       },
       default: "free",

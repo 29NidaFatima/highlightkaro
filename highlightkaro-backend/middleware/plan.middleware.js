@@ -1,5 +1,5 @@
 module.exports = (requiredPlan) => {
-  const order = ["free", "basic19", "pro99"];
+  const order = ["free", "basic30", "pro99"];
 
   return (req, res, next) => {
     if (!req.user || !req.user.plan) {

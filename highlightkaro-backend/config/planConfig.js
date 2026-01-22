@@ -29,7 +29,7 @@ const PLAN_CONFIG = {
     cloudSave: false, // Not available
   },
 
-  basic19: {
+  basic30: {
     name: "Basic",
     colors: ["#ffff00", "#ff0000"], // Yellow + Red
     animations: ["left-to-right", "down-up", "rise", "glow"], // L→R, Down→Up, Rise, Glow Swipe
