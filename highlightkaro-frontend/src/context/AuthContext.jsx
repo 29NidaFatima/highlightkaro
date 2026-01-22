@@ -1,4 +1,5 @@
 import { createContext, useContext, useState } from "react";
+import { API_BASE_URL } from "../config/api";
 
 const AuthContext = createContext();
 
@@ -23,12 +24,12 @@ export const AuthProvider = ({ children }) => {
     localStorage.clear();
   };
 
-  // ✅ NEW: Refresh user after payment
+  // Refresh user after payment
   const refreshUser = async () => {
     if (!token) return;
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/me", {
+      const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
