@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { API_BASE_URL } from "../config/api";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -69,7 +70,7 @@ export default function Login() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -160,7 +161,9 @@ export default function Login() {
         <button
           onClick={handleLogin}
           disabled={!isFormValid || isSubmitting}
-          className={`w-full py-3 rounded-lg font-semibold text-white transition-all duration-200 shadow-md ${!isFormValid || isSubmitting
+          className={`w-full py-3 rounded-lg font-semibold text-white transition-all duration-200 
+            shadow-sm hover:shadow-md active:scale-[0.98]
+            ${!isFormValid || isSubmitting
               ? "bg-gray-400 cursor-not-allowed"
               : "bg-cyan-500 hover:bg-cyan-600"
             }`}

@@ -53,6 +53,18 @@ export default function Register() {
       setPasswordError("Password must be at least 8 characters");
       return false;
     }
+    if (!/[A-Z]/.test(value)) {
+      setPasswordError("Password must include 1 uppercase letter");
+      return false;
+    }
+    if (!/[a-z]/.test(value)) {
+      setPasswordError("Password must include 1 lowercase letter");
+      return false;
+    }
+    if (!/[0-9]/.test(value)) {
+      setPasswordError("Password must include 1 number");
+      return false;
+    }
     setPasswordError("");
     return true;
   };
@@ -173,7 +185,9 @@ export default function Register() {
         <button
           onClick={handleRegister}
           disabled={!isFormValid || isSubmitting}
-          className={`w-full py-3 rounded-lg font-semibold text-white transition-all duration-200 shadow-md ${!isFormValid || isSubmitting
+          className={`w-full py-3 rounded-lg font-semibold text-white transition-all duration-200 
+            shadow-sm hover:shadow-md active:scale-[0.98]
+            ${!isFormValid || isSubmitting
               ? "bg-gray-400 cursor-not-allowed"
               : "bg-cyan-500 hover:bg-cyan-600"
             }`}
