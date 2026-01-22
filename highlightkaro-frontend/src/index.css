@@ -2,17 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Range slider styles for cyan theme (light mode only) */
+@layer base {
+  html {
+    @apply font-sans antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply text-gray-900 bg-gray-50;
+  }
+
+  /* Prevent horizontal overflow on mobile */
+  html, body {
+    @apply overflow-x-hidden;
+  }
+}
+
+/* ====== RANGE SLIDER STYLES ====== */
+
+/* Light mode range slider */
 input[type="range"] {
-  @apply appearance-none w-full h-2 bg-gray-200 rounded-lg outline-none;
+  @apply appearance-none w-full h-2 bg-gray-200 rounded-lg outline-none cursor-pointer;
 }
 
 input[type="range"]::-webkit-slider-thumb {
-  @apply appearance-none w-4 h-4 bg-cyan-500 rounded-full cursor-pointer hover:bg-cyan-600 transition-colors;
+  @apply appearance-none w-5 h-5 bg-cyan-500 rounded-full cursor-pointer 
+         hover:bg-cyan-600 active:scale-95 transition-all duration-150
+         shadow-md;
 }
 
 input[type="range"]::-moz-range-thumb {
-  @apply w-4 h-4 bg-cyan-500 rounded-full cursor-pointer border-0 hover:bg-cyan-600 transition-colors;
+  @apply w-5 h-5 bg-cyan-500 rounded-full cursor-pointer border-0 
+         hover:bg-cyan-600 active:scale-95 transition-all duration-150
+         shadow-md;
 }
 
 input[type="range"]::-webkit-slider-runnable-track {
@@ -21,4 +44,47 @@ input[type="range"]::-webkit-slider-runnable-track {
 
 input[type="range"]::-moz-range-track {
   @apply w-full h-2 bg-gray-200 rounded-lg;
+}
+
+/* Dark mode range slider */
+.dark input[type="range"] {
+  @apply bg-gray-700;
+}
+
+.dark input[type="range"]::-webkit-slider-thumb {
+  @apply bg-yellow-400 hover:bg-yellow-300;
+}
+
+.dark input[type="range"]::-moz-range-thumb {
+  @apply bg-yellow-400 hover:bg-yellow-300;
+}
+
+.dark input[type="range"]::-webkit-slider-runnable-track {
+  @apply bg-gray-700;
+}
+
+.dark input[type="range"]::-moz-range-track {
+  @apply bg-gray-700;
+}
+
+/* ====== FORM ELEMENT FOCUS STYLES ====== */
+input:focus, select:focus, textarea:focus, button:focus {
+  @apply outline-none;
+}
+
+/* ====== SCROLLBAR STYLES ====== */
+::-webkit-scrollbar {
+  @apply w-2;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full hover:bg-gray-400;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-gray-600 hover:bg-gray-500;
 }
