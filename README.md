@@ -43,7 +43,7 @@ Perfect for creators, editors, educators, or anyone who needs clean animated hig
 
 ## 📁 Folder Structure
 ```
- highlightkaro/
+highlightkaro/
     ├── README.md
     ├── highlightkaro-backend/
     │   ├── app.js
@@ -52,10 +52,13 @@ Perfect for creators, editors, educators, or anyone who needs clean animated hig
     │   ├── RAZORPAY_TESTING_GUIDE.md
     │   ├── config/
     │   │   ├── db.js
-    │   │   └── planConfig.js
+    │   │   ├── planConfig.js
+    │   │   └── pricingConfig.js
     │   ├── controllers/
     │   │   ├── authController.js
-    │   │   └── paymentController.js
+    │   │   ├── paymentController.js
+    │   │   ├── pricingController.js
+    │   │   └── renderController.js
     │   ├── middleware/
     │   │   ├── auth.middleware.js
     │   │   ├── plan.middleware.js
@@ -67,10 +70,14 @@ Perfect for creators, editors, educators, or anyone who needs clean animated hig
     │   ├── routes/
     │   │   ├── auth.routes.js
     │   │   ├── payment.routes.js
+    │   │   ├── pricing.routes.js
     │   │   └── render.routes.js
+    │   ├── services/
+    │   │   └── pricing.service.js
     │   └── utils/
     │       ├── jwt.js
     │       ├── planFeatures.js
+    │       ├── pricingRegion.js
     │       └── watermark.js
     └── highlightkaro-frontend/
         ├── README.md
@@ -89,15 +96,19 @@ Perfect for creators, editors, educators, or anyone who needs clean animated hig
             ├── api/
             │   ├── authApi.js
             │   ├── paymentApi.js
+            │   ├── pricingApi.js
             │   └── renderApi.js
             ├── components/
             │   └── PlanGuard.jsx
             ├── config/
-            │   └── planConfig.js
+            │   ├── api.js
+            │   ├── planConfig.js
+            │   └── pricingConfig.js
             ├── context/
             │   └── AuthContext.jsx
             ├── pages/
             │   ├── Login.jsx
+            │   ├── PaymentFailed.jsx
             │   ├── PaymentRedirect.jsx
             │   ├── PaymentSuccess.jsx
             │   ├── Register.jsx
@@ -106,6 +117,7 @@ Perfect for creators, editors, educators, or anyone who needs clean animated hig
                 ├── auth.js
                 ├── exportState.js
                 └── planFeatures.js
+
 
 
 
