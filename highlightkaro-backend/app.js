@@ -12,8 +12,8 @@ const pricingRoutes = require("./routes/pricing.routes");
 
 const app = express();
 const allowedOrigins = process.env.FRONTEND_URL 
-  ? [process.env.FRONTEND_URL, "https://highlightkaro-1.onrender.com"]
-  : ["https://highlightkaro-1.onrender.com"];
+  ? [process.env.FRONTEND_URL]
+  : [];
 
 app.use(
   cors({
