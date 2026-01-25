@@ -15,42 +15,42 @@ const ALL_ANIMATIONS = [
   "underline",
 ];
 
-// Plan configuration
+
 const PLAN_CONFIG = {
   free: {
     name: "Free",
-    colors: ["#ffff00"], // Yellow only
-    animations: ["left-to-right"], // Left → Right only
-    exportQuality: "720p", // 720p max
-    watermark: true, // Watermark ON
-    darkMode: false, // Light mode only
-    exportLimit: 2, // 2 exports per day
-    exportLimitPeriod: "day", // Reset daily
-    cloudSave: false, // Not available
+    colors: ["#ffff00"], 
+    animations: ["left-to-right"], 
+    exportQuality: "720p", 
+    watermark: true,
+    darkMode: false, 
+    exportLimit: 2, 
+    exportLimitPeriod: "day", 
+    cloudSave: false,
   },
 
   basic30: {
     name: "Basic",
-    colors: ["#ffff00", "#ff0000"], // Yellow + Red
-    animations: ["left-to-right", "down-up", "rise", "glow"], // L→R, Down→Up, Rise, Glow Swipe
-    exportQuality: "1080p", // 1080p
-    watermark: false, // Watermark OFF
-    darkMode: true, // Dark mode allowed
-    exportLimit: null, // Unlimited (null = unlimited)
+    colors: ["#ffff00", "#ff0000"], 
+    animations: ["left-to-right", "down-up", "rise", "glow"], 
+    exportQuality: "1080p", 
+    watermark: false,
+    darkMode: true, 
+    exportLimit: null, 
     exportLimitPeriod: null,
-    cloudSave: false, // Not available
+    cloudSave: false, 
   },
 
   pro99: {
     name: "Pro",
-    colors: ALL_COLORS, // All colors unlocked
-    animations: ALL_ANIMATIONS, // All animations unlocked (including underline)
-    exportQuality: "1080p", // 1080p
-    watermark: false, // Watermark OFF
-    darkMode: true, // Dark mode allowed
-    exportLimit: null, // Unlimited
+    colors: ALL_COLORS,
+    animations: ALL_ANIMATIONS, 
+    exportQuality: "1080p", 
+    watermark: false,
+    darkMode: true, 
+    exportLimit: null, 
     exportLimitPeriod: null,
-    cloudSave: true, // Future feature (design only)
+    cloudSave: true, 
   },
 };
 
