@@ -43,6 +43,7 @@ Perfect for creators, editors, educators, or anyone who needs clean animated hig
 
 ## 📁 Folder Structure
 ```
+
  highlightkaro/
     ├── README.md
     ├── highlightkaro-backend/
@@ -106,9 +107,6 @@ Perfect for creators, editors, educators, or anyone who needs clean animated hig
                 ├── auth.js
                 ├── exportState.js
                 └── planFeatures.js
-
-
-
 
 ```
  ## Environment Setup
