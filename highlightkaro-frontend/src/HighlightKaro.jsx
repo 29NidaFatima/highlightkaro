@@ -714,7 +714,7 @@ const HighlightKaro = () => {
           : "bg-white/80 border-cyan-200"
           } backdrop-blur-sm`}
       >
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
           {/* Left: Logo & Tagline */}
           <div>
@@ -734,7 +734,7 @@ const HighlightKaro = () => {
 
 
           {/* Right actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto flex-wrap justify-end">
 
             {/* Legendary Dark Mode Toggle */}
             <div className="relative ">
@@ -787,6 +787,7 @@ const HighlightKaro = () => {
                     ? "bg-gray-900/80 border border-yellow-500/20"
                     : "bg-white/80 border border-cyan-200"}
       `}
+                style={{ maxWidth: "100%" }}
               >
                 {/* Plan status */}
                 <div className="flex flex-col leading-tight">
@@ -805,7 +806,7 @@ const HighlightKaro = () => {
                 {user.plan === "free" && (
                   <button
                     onClick={() => navigate("/upgrade")}
-                    className="ml-1 px-3 py-2 rounded-md  bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-medium transition"
+                    className="ml-1 px-3 py-2 rounded-md bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-medium transition shrink-0"
                   >
                     Upgrade
                   </button>
@@ -815,7 +816,7 @@ const HighlightKaro = () => {
                   <button
                     onClick={() => handleUpgrade("pro99")}
                     className="
-    px-4 py-1.5 rounded-xl text-xs font-semibold
+    px-4 py-1.5 rounded-xl text-xs font-semibold shrink-0
     bg-gradient-to-br from-cyan-600 to-indigo-600
     text-white
     shadow-[0_8px_24px_rgba(79,70,229,0.35)]
@@ -846,6 +847,7 @@ const HighlightKaro = () => {
                     ? "bg-gray-800/70 text-gray-300 hover:bg-gray-700"
                     : "bg-white/70 border border-cyan-200 text-cyan-700 hover:bg-cyan-50"}
       `}
+                style={{ minWidth: "90px" }}
               >
                 Logout
               </button>
