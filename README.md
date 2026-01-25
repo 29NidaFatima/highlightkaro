@@ -163,7 +163,7 @@ npm install
 npm run dev
 
 # Frontend will be running at:
-# http://localhost:5173
+# https://highlightkaro-1.onrender.com
 
 
 # ========================================
@@ -177,7 +177,7 @@ fetch("http://localhost:5000/render", {
 });
 
 # Service URLs
-# Frontend: http://localhost:5173
+# Frontend: https://highlightkaro-1.onrender.com
 # Backend:  http://localhost:5000
 
 # If both are running, MP4 Export will work correctly. 🎉

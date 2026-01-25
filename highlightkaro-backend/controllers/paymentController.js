@@ -63,7 +63,7 @@ exports.createPaymentLink = async (req, res) => {
         email: true,
       },
       reminder_enable: true,
-      callback_url: `${process.env.FRONTEND_URL || "http://localhost:5173"}/payment-success`,
+      callback_url: `${process.env.FRONTEND_URL || "https://highlightkaro-1.onrender.com"}/payment-success`,
       callback_method: "get",
     };
 
