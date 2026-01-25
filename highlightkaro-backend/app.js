@@ -1,12 +1,14 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
+const port = process.env.PORT || 4000 
 const connectDB = require("./config/db");
 
 const authRoutes = require("./routes/auth.routes");
 const renderRoutes = require("./routes/render.routes");
 const paymentRoutes = require("./routes/payment.routes");
 const pricingRoutes = require("./routes/pricing.routes");
+
 
 const app = express();
 const allowedOrigins = process.env.FRONTEND_URL 
