@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerUser } from "../api/authApi";
+import { showToast } from "../utils/toast";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -83,10 +84,10 @@ export default function Register() {
 
     try {
       await registerUser({ name, email, password });
-      alert("Account created successfully. Please login.");
+      showToast("Account created successfully. Please login.", "success");
       navigate("/login");
     } catch (err) {
-      alert(err.message || "Registration failed");
+      showToast(err.message || "Registration failed", "error");
     } finally {
       setIsSubmitting(false);
     }

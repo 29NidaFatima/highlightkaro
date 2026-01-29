@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
+import { showToast } from "../utils/toast";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -81,11 +82,12 @@ export default function Login() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.error || "Login failed. Please try again.");
+        showToast(data.error || "Login failed. Please try again.", "error");
         return;
       }
 
       login(data);
+      showToast("Welcome back!", "success");
 
       // Redirect based on return parameter
       const returnPath = searchParams.get("return");
@@ -96,7 +98,7 @@ export default function Login() {
         navigate("/");
       }
     } catch (err) {
-      alert("Login failed. Please check your connection and try again.");
+      showToast("Login failed. Please check your connection and try again.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -160,16 +162,17 @@ export default function Login() {
         </div>
 
         {/* Remember Me */}
-        <div className="mb-6 flex items-center gap-2">
+        <div className="mb-6 flex items-center gap-2 ">
           <input
             id="rememberMe"
             type="checkbox"
             checked={rememberMe}
+            className="accent-cyan-600 focus:ring-cyan-600 focus:outline-none"
             onChange={(e) => setRememberMe(e.target.checked)}
             disabled={isSubmitting}
           />
           <label htmlFor="rememberMe" className="text-sm text-gray-700">
-            Remember Me
+            Remember me
           </label>
         </div>
 

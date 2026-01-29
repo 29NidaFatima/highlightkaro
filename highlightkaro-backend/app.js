@@ -23,15 +23,18 @@ app.use(
     origin: (origin, callback) => {
 
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, origin);
 
-      return callback(null, true);
+      return callback(null, origin);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: "*",
+    allowedHeaders: ["Content-Type", "content-type", "Authorization", "X-Requested-With", "Accept"],
+    optionsSuccessStatus: 204,
   })
 );
+
+app.options("*", cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

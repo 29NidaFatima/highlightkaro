@@ -17,6 +17,7 @@ import { createPaymentLink } from "./api/paymentApi";
 import { fetchPricing } from "./api/pricingApi";
 import { renderVideo } from "./api/renderApi";
 import { PLAN_CODES } from "./config/pricingConfig";
+import { showToast } from "./utils/toast";
 
 
 const HighlightKaro = () => {
@@ -74,7 +75,7 @@ const HighlightKaro = () => {
       });
 
     } catch (err) {
-      alert(err.message || "Payment initiation failed");
+      showToast(err.message || "Payment initiation failed", "error");
     }
   };
 
@@ -526,7 +527,7 @@ const HighlightKaro = () => {
       const errorMessage = err.message.includes("limit reached")
         ? err.message
         : `Export failed: ${err.message}`;
-      alert(errorMessage);
+      showToast(errorMessage, "error");
       // throw err; // Don't rethrow, just alert
     } finally {
       setExporting(false);
@@ -536,7 +537,7 @@ const HighlightKaro = () => {
   // Handle export button click
   const handleExport = async () => {
     if (!highlights.length) {
-      alert("Please add at least one highlight area");
+      showToast("Please add at least one highlight area", "info");
       return;
     }
 
@@ -619,7 +620,7 @@ const HighlightKaro = () => {
           clearExportState();
 
           // Show user-friendly message
-          alert("You're logged in. Click Export to continue.");
+          showToast("You're logged in. Click Export to continue.", "info");
         } catch (err) {
           console.error("Failed to restore export state:", err);
           clearExportState(); // Clear on error

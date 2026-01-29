@@ -69,7 +69,7 @@ exports.login = async (req, res) => {
       res.cookie("hk_refresh", refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        sameSite: "none",
         maxAge: sevenDaysMs,
         path: "/api/auth/refresh",
       });
@@ -129,7 +129,7 @@ exports.refresh = async (req, res) => {
     res.cookie("hk_refresh", newRefreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "none",
       maxAge: sevenDaysMs,
       path: "/api/auth/refresh",
     });
