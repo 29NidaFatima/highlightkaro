@@ -11,7 +11,7 @@ const razorpayInstance = new razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// Plan names (display only). Amounts/currency are backend-driven via pricingConfig.
+
 const PLAN_NAME = {
   basic30: "Basic Plan",
   pro99: "Pro Plan",
@@ -31,7 +31,7 @@ exports.createPaymentLink = async (req, res) => {
       return res.status(400).json({ error: "Invalid plan" });
     }
 
-    // Prevent downgrades (only allow upgrades)
+ 
     const currentPlan = req.user.plan;
     const planOrder = ["free", "basic30", "pro99"];
     if (planOrder.indexOf(currentPlan) >= planOrder.indexOf(plan)) {
@@ -40,8 +40,6 @@ exports.createPaymentLink = async (req, res) => {
       });
     }
 
-    // Decide pricing from backend using requested region (or default to global if missing/invalid)
-    // We trust the region selection from UI (user choice), but the price is strictly from backend.
     const planPricing = pricingService.getPlanPricing(plan, region);
 
     if (!planPricing || typeof planPricing.amount !== "number") {
@@ -49,8 +47,7 @@ exports.createPaymentLink = async (req, res) => {
     }
 
     const amountMinor = toMinorUnits(planPricing.amount);
-
-    // Create payment link
+=
     const paymentLinkOptions = {
       amount: amountMinor,
       currency: planPricing.currency,
@@ -107,25 +104,25 @@ exports.verifyWebhook = async (req, res) => {
       return res.status(400).json({ error: "Missing webhook signature" });
     }
 
-    // Get raw body (Buffer from express.raw())
     const rawBody = req.body;
 
-    // Verify webhook signature using raw body
+    console.log("[Webhook] Received webhook");
     const generatedSignature = crypto
       .createHmac("sha256", webhookSecret)
       .update(rawBody)
       .digest("hex");
 
     if (generatedSignature !== webhookSignature) {
+      console.log("[Webhook] Signature mismatch");
       return res.status(401).json({ error: "Invalid webhook signature" });
     }
 
-    // Parse JSON after signature verification
     const payload = JSON.parse(rawBody.toString());
     const event = payload.event;
     const paymentEntity = payload.payload?.payment_link?.entity;
 
-    // Handle payment.captured event (successful payment)
+    console.log("[Webhook] Event:", event);
+
     if (event === "payment_link.paid") {
       const paymentLinkId = paymentEntity.id;
       const paymentId = paymentEntity.payments?.[0]?.id;
@@ -134,7 +131,7 @@ exports.verifyWebhook = async (req, res) => {
         return res.status(400).json({ error: "Invalid payment data" });
       }
 
-      // Find payment record
+      console.log("[Webhook] payment_link_id:", paymentLinkId, "payment_id:", paymentId);
       const payment = await Payment.findOne({
         razorpayPaymentLinkId: paymentLinkId,
         status: "pending",
@@ -145,7 +142,7 @@ exports.verifyWebhook = async (req, res) => {
         return res.status(200).json({ message: "Payment already processed" });
       }
 
-      // Prevent duplicate processing
+      console.log("[Webhook] Payment record found:", payment._id.toString());
       const existingPaid = await Payment.findOne({
         razorpayPaymentId: paymentId,
         status: "paid",
@@ -156,7 +153,6 @@ exports.verifyWebhook = async (req, res) => {
         return res.status(200).json({ message: "Payment already processed" });
       }
 
-      // Verify payment with Razorpay API
       try {
         const razorpayPayment = await razorpayInstance.payments.fetch(
           paymentId
@@ -171,17 +167,18 @@ exports.verifyWebhook = async (req, res) => {
           return res.status(400).json({ error: "Payment verification failed" });
         }
 
-        // Update payment record
+        console.log("[Webhook] Razorpay verification passed");
         payment.razorpayPaymentId = paymentId;
         payment.status = "paid";
         payment.processedAt = new Date();
         await payment.save();
 
-        // Update user plan
         const user = await User.findById(payment.userId);
         if (user) {
+          console.log("[Webhook] Updating user plan:", user._id.toString(), "->", payment.plan);
           user.plan = payment.plan;
           await user.save();
+          console.log("[Webhook] User plan updated:", user.plan);
         }
 
         return res.status(200).json({ message: "Payment verified successfully" });
@@ -191,7 +188,7 @@ exports.verifyWebhook = async (req, res) => {
       }
     }
 
-    // Handle other events (optional logging)
+
     if (event === "payment_link.cancelled" || event === "payment_link.expired") {
       const paymentLinkId = paymentEntity.id;
       await Payment.findOneAndUpdate(

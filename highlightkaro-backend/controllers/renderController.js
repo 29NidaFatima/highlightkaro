@@ -30,7 +30,7 @@ exports.renderVideo = async (req, res) => {
   // Validate export limit (for free plan: 2/day)
   const exportLimitCheck = await validateExportLimit(req.user._id, userPlan);
   if (!exportLimitCheck.allowed) {
-    safeRm(req.file.path); // Clean up uploaded file
+    safeRm(req.file.path); 
     return res.status(403).json({
       error: `Export limit reached. ${exportLimitCheck.limit} exports per day allowed on ${planConfig.name} plan.`,
       limit: exportLimitCheck.limit,
@@ -47,7 +47,7 @@ exports.renderVideo = async (req, res) => {
     opacity,
     duration,
     fps,
-    anim, // "left-to-right", "down-up", "rise", "glow", "underline"
+    anim, 
   } = req.body;
 
   // Validate color
@@ -104,126 +104,62 @@ exports.renderVideo = async (req, res) => {
 
   const totalFrames = Math.max(1, Math.round(durationSec * fpsNum));
 
-  // Temporary directory for frames and output video
-  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), "highlightkaro-"));
-  const framesDir = path.join(tmpBase, "frames");
-  const outputVideoPath = path.join(tmpBase, "output.mp4");
-
-  fs.mkdirSync(framesDir, { recursive: true });
-
   try {
-    // Load watermark image if needed (cached for performance)
     let watermarkImg = null;
     if (planConfig.watermark) {
       watermarkImg = await getWatermarkImage();
     }
 
-    // Load image using node-canvas
     const img = await loadImage(req.file.path);
     let imgWidth = img.width;
     let imgHeight = img.height;
 
-    // Enforce max resolution based on plan
     const maxResolution = getMaxResolution(userPlan);
     if (imgWidth > maxResolution || imgHeight > maxResolution) {
-      // Scale down if exceeds limit
-      const scale = Math.min(maxResolution / imgWidth, maxResolution / imgHeight);
-      imgWidth = Math.floor(imgWidth * scale);
-      imgHeight = Math.floor(imgHeight * scale);
+      const scaleImg = Math.min(maxResolution / imgWidth, maxResolution / imgHeight);
+      imgWidth = Math.floor(imgWidth * scaleImg);
+      imgHeight = Math.floor(imgHeight * scaleImg);
     }
 
-    // Force even dimensions (required for video codecs)
     const canvasWidth = imgWidth + (imgWidth % 2);
     const canvasHeight = imgHeight + (imgHeight % 2);
 
-    // Render frames
-    for (let i = 0; i < totalFrames; i++) {
-      const canvas = createCanvas(canvasWidth, canvasHeight);
-      const ctx = canvas.getContext("2d");
-
-      // Draw original image (scale if needed)
-      if (imgWidth !== img.width || imgHeight !== img.height) {
-        ctx.drawImage(img, 0, 0, imgWidth, imgHeight);
-      } else {
-        ctx.drawImage(img, 0, 0, imgWidth, imgHeight);
-      }
-
-      // Time progress 0 → 1
-      const t = totalFrames === 1 ? 1 : i / (totalFrames - 1);
-
-      // Compute animation-specific width/opacity
-      let currentWidth = rectW;
-      let currentOpacity = baseOpacity;
-
-      // Animation logic (using backend anim code)
-      if (backendAnim === "ltr") {
-        // left-to-right: width grows over time
-        currentWidth = rectW * t;
-        currentOpacity = baseOpacity;
-      } else if (backendAnim === "pulse" || backendAnim === "glow") {
-        // pulse/glow: width constant, opacity oscillates
-        const pulses = 4;
-        const pulse = Math.sin(t * Math.PI * 2 * pulses) * 0.3 + 0.7;
-        currentOpacity = baseOpacity * pulse;
-      } else if (backendAnim === "du") {
-        // down-up: height grows over time
-        currentWidth = rectW;
-        // Note: This would require height animation, simplified here
-        currentOpacity = baseOpacity;
-      } else {
-        // Default: rise, underline, etc.
-        currentWidth = rectW;
-        currentOpacity = baseOpacity;
-      }
-
-      // Draw highlight (similar to frontend: multiply + alpha)
-      ctx.globalCompositeOperation = "multiply";
-      ctx.fillStyle = color || "#ffff00";
-      ctx.globalAlpha = currentOpacity;
-
-      // Avoid width 0 to ensure at least one pixel
-      const drawWidth = Math.max(1, currentWidth);
-
-      ctx.fillRect(rectX, rectY, drawWidth, rectH);
-
-      // Reset
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = "source-over";
-
-      // Apply image watermark for free plan (server-side only)
-      if (planConfig.watermark && watermarkImg) {
-        applyWatermark(ctx, canvasWidth, canvasHeight, watermarkImg);
-      }
-
-      // Save frame as PNG
-      const frameIndexStr = String(i + 1).padStart(4, "0"); // 0001, 0002, ...
-      const framePath = path.join(framesDir, `frame-${frameIndexStr}.png`);
-      const buffer = canvas.toBuffer("image/png");
-      fs.writeFileSync(framePath, buffer);
+    const baseCanvas = createCanvas(canvasWidth, canvasHeight);
+    const baseCtx = baseCanvas.getContext("2d");
+    baseCtx.drawImage(img, 0, 0, imgWidth, imgHeight);
+    if (planConfig.watermark && watermarkImg) {
+      applyWatermark(baseCtx, canvasWidth, canvasHeight, watermarkImg);
     }
 
-    // Now call ffmpeg to turn frames into MP4
-    // ffmpeg -y -framerate <fps> -i frame-%04d.png -c:v libx264 -pix_fmt yuv420p output.mp4
+    const canvas = createCanvas(canvasWidth, canvasHeight);
+    const ctx = canvas.getContext("2d");
 
     const ffmpegArgs = [
       "-y",
-      "-framerate",
+      "-f",
+      "image2pipe",
+      "-vcodec",
+      "png",
+      "-r",
       String(fpsNum),
       "-i",
-      path.join(framesDir, "frame-%04d.png"),
+      "-",
       "-c:v",
       "libx264",
       "-pix_fmt",
       "yuv420p",
+      "-preset",
+      "veryfast",
       "-movflags",
       "+faststart",
-      outputVideoPath,
+      "-f",
+      "mp4",
+      "-"
     ];
 
     const ffmpeg = spawn("ffmpeg", ffmpegArgs);
 
     ffmpeg.stderr.on("data", (data) => {
-      // ffmpeg logs progress to stderr; you can parse this if you want progress
       console.log("[ffmpeg]", data.toString());
     });
 
@@ -231,40 +167,54 @@ exports.renderVideo = async (req, res) => {
       console.error("ffmpeg spawn error", err);
     });
 
-    ffmpeg.on("close", (code) => {
-      // Clean uploaded input image
-      safeRm(req.file.path);
+    res.setHeader("Content-Type", "video/mp4");
+    res.setHeader("Content-Disposition", 'attachment; filename="highlight.mp4"');
+    ffmpeg.stdout.pipe(res);
 
-      if (code !== 0) {
-        console.error("ffmpeg exited with code", code);
-        safeRm(tmpBase);
-        return res.status(500).json({ error: "ffmpeg failed" });
+    for (let i = 0; i < totalFrames; i++) {
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+      ctx.drawImage(baseCanvas, 0, 0);
+
+      const t = totalFrames === 1 ? 1 : i / (totalFrames - 1);
+
+      let currentWidth = rectW;
+      let currentOpacity = baseOpacity;
+
+      if (backendAnim === "ltr") {
+        currentWidth = rectW * t;
+      } else if (backendAnim === "pulse" || backendAnim === "glow") {
+        const pulses = 4;
+        const pulse = Math.sin(t * Math.PI * 2 * pulses) * 0.3 + 0.7;
+        currentOpacity = baseOpacity * pulse;
+      } else if (backendAnim === "du") {
+        currentWidth = rectW;
+      } else {
+        currentWidth = rectW;
       }
 
-      // Stream video file to client
-      res.setHeader("Content-Type", "video/mp4");
-      res.setHeader(
-        "Content-Disposition",
-        'attachment; filename="highlight.mp4"'
-      );
+      ctx.globalCompositeOperation = "multiply";
+      ctx.fillStyle = color || "#ffff00";
+      ctx.globalAlpha = currentOpacity;
+      const drawWidth = Math.max(1, currentWidth);
+      ctx.fillRect(rectX, rectY, drawWidth, rectH);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
 
-      const readStream = fs.createReadStream(outputVideoPath);
+      const buffer = canvas.toBuffer("image/png");
+      ffmpeg.stdin.write(buffer);
+    }
 
-      readStream.on("close", async () => {
-        // Clean temps after response
-        safeRm(tmpBase);
-        // Log export (only for free plan to track limits)
-        if (planConfig.exportLimit !== null) {
-          await logExport(req.user._id);
-        }
-      });
+    ffmpeg.stdin.end();
 
-      readStream.pipe(res);
+    ffmpeg.stdout.on("close", async () => {
+      safeRm(req.file.path);
+      if (planConfig.exportLimit !== null) {
+        await logExport(req.user._id);
+      }
     });
   } catch (err) {
     console.error("Render error:", err);
     safeRm(req.file.path);
-    if (typeof tmpBase !== "undefined") safeRm(tmpBase);
     res.status(500).json({ error: "Render error: " + err.message });
   }
 };
