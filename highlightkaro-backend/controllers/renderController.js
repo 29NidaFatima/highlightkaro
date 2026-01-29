@@ -142,18 +142,22 @@ exports.renderVideo = async (req, res) => {
 
     const ffmpegArgs = [
       "-y",
-      "-framerate",
+      "-f",
+      "rawvideo",
+      "-pix_fmt",
+      "rgba",
+      "-s",
+      `${canvasWidth}x${canvasHeight}`,
+      "-r",
       String(fpsNum),
       "-i",
-      "pipe:",
+      "pipe:0",
       "-c:v",
       "libx264",
       "-pix_fmt",
       "yuv420p",
       "-preset",
-      "veryfast",
-      "-movflags",
-      "+faststart",
+      "ultrafast",
       outputVideoPath
     ];
 
@@ -229,7 +233,7 @@ exports.renderVideo = async (req, res) => {
       ctx.globalCompositeOperation = "source-over";
 
       if (ffmpegClosed) break;
-      const buffer = canvas.toBuffer("image/png");
+      const buffer = canvas.toBuffer("raw");
       const ok = ffmpeg.stdin.write(buffer);
       if (!ok) {
         await new Promise((r) => ffmpeg.stdin.once("drain", r));
