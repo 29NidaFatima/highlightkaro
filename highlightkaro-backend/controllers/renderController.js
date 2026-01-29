@@ -134,16 +134,18 @@ exports.renderVideo = async (req, res) => {
     const canvas = createCanvas(canvasWidth, canvasHeight);
     const ctx = canvas.getContext("2d");
 
+    const outDir = path.join(os.tmpdir(), "highlightkaro_exports");
+    try {
+      fs.mkdirSync(outDir, { recursive: true });
+    } catch {}
+    const outputVideoPath = path.join(outDir, `export_${Date.now()}.mp4`);
+
     const ffmpegArgs = [
       "-y",
-      "-f",
-      "image2pipe",
-      "-vcodec",
-      "png",
-      "-r",
+      "-framerate",
       String(fpsNum),
       "-i",
-      "-",
+      "pipe:",
       "-c:v",
       "libx264",
       "-pix_fmt",
@@ -152,24 +154,50 @@ exports.renderVideo = async (req, res) => {
       "veryfast",
       "-movflags",
       "+faststart",
-      "-f",
-      "mp4",
-      "-"
+      outputVideoPath
     ];
 
     const ffmpeg = spawn("ffmpeg", ffmpegArgs);
 
-    ffmpeg.stderr.on("data", (data) => {
-      console.log("[ffmpeg]", data.toString());
-    });
-
+    ffmpeg.stderr.on("data", () => {});
     ffmpeg.on("error", (err) => {
-      console.error("ffmpeg spawn error", err);
+      safeRm(req.file.path);
+      safeRm(outputVideoPath);
+      return res.status(500).json({ error: "FFmpeg error: " + err.message });
     });
 
-    res.setHeader("Content-Type", "video/mp4");
-    res.setHeader("Content-Disposition", 'attachment; filename="highlight.mp4"');
-    ffmpeg.stdout.pipe(res);
+    let ffmpegClosed = false;
+    ffmpeg.on("close", (code) => {
+      ffmpegClosed = true;
+      if (code !== 0) {
+        safeRm(req.file.path);
+        safeRm(outputVideoPath);
+        return res.status(500).json({ error: "FFmpeg failed" });
+      }
+      res.setHeader("Content-Type", "video/mp4");
+      res.setHeader("Content-Disposition", 'attachment; filename="highlight.mp4"');
+      const readStream = fs.createReadStream(outputVideoPath);
+      readStream.on("error", (err) => {
+        safeRm(req.file.path);
+        safeRm(outputVideoPath);
+        return res.status(500).json({ error: "File read error: " + err.message });
+      });
+      readStream.pipe(res);
+      const finalize = async () => {
+        safeRm(req.file.path);
+        safeRm(outputVideoPath);
+        if (planConfig.exportLimit !== null) {
+          await logExport(req.user._id);
+        }
+      };
+      res.on("finish", finalize);
+      res.on("close", finalize);
+    });
+    ffmpeg.stdin.on("error", (err) => {
+      if (err && err.code === "EPIPE") {
+        return;
+      }
+    });
 
     for (let i = 0; i < totalFrames; i++) {
       ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -200,18 +228,17 @@ exports.renderVideo = async (req, res) => {
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
 
+      if (ffmpegClosed) break;
       const buffer = canvas.toBuffer("image/png");
-      ffmpeg.stdin.write(buffer);
+      const ok = ffmpeg.stdin.write(buffer);
+      if (!ok) {
+        await new Promise((r) => ffmpeg.stdin.once("drain", r));
+      }
     }
 
     ffmpeg.stdin.end();
 
-    ffmpeg.stdout.on("close", async () => {
-      safeRm(req.file.path);
-      if (planConfig.exportLimit !== null) {
-        await logExport(req.user._id);
-      }
-    });
+    // Cleanup will be handled in ffmpeg 'close' -> streaming finalize
   } catch (err) {
     console.error("Render error:", err);
     safeRm(req.file.path);
