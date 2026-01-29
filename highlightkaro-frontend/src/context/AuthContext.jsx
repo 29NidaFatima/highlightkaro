@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { API_BASE_URL } from "../config/api";
 
 const AuthContext = createContext();
@@ -44,6 +44,24 @@ export const AuthProvider = ({ children }) => {
       console.error("Failed to refresh user", err);
     }
   };
+
+  useEffect(() => {
+    const tryRefresh = async () => {
+      if (token) return;
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          login(data);
+        }
+      } catch {}
+    };
+    tryRefresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <AuthContext.Provider

@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { generateAccessToken, generateRefreshToken } = require("../utils/jwt");
 
 exports.register = async (req, res) => {
   try {
@@ -37,7 +38,7 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, rememberMe } = req.body;
 
     // Validation middleware has already validated email format
     // Explicitly select password (required for comparison)
@@ -60,12 +61,19 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: "Account is inactive" });
     }
 
-    // JWT payload contains ONLY userId (plan fetched from DB on each request)
-    const token = jwt.sign(
-      { userId: user._id.toString() },
-      process.env.JWT_SECRET,
-      { expiresIn: "24h" }
-    );
+    const token = generateAccessToken(user, !!rememberMe);
+
+    if (rememberMe) {
+      const refreshToken = generateRefreshToken(user);
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+      res.cookie("hk_refresh", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: sevenDaysMs,
+        path: "/api/auth/refresh",
+      });
+    }
 
     // Response NEVER includes password (user object doesn't have password due to select: false)
     res.json({
@@ -82,6 +90,62 @@ exports.login = async (req, res) => {
   }
 };
 
+exports.refresh = async (req, res) => {
+  try {
+    const cookieHeader = req.headers.cookie || "";
+    const match = cookieHeader
+      .split(";")
+      .map((c) => c.trim())
+      .find((c) => c.startsWith("hk_refresh="));
+    if (!match) {
+      return res.status(401).json({ error: "No refresh token" });
+    }
+    const refreshToken = decodeURIComponent(match.split("=")[1]);
+
+    let decoded;
+    try {
+      decoded = jwt.verify(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET
+      );
+    } catch (err) {
+      return res.status(401).json({ error: "Invalid refresh token" });
+    }
+
+    if (decoded.type !== "refresh" || !decoded.userId) {
+      return res.status(401).json({ error: "Invalid refresh token" });
+    }
+
+    const user = await require("../models/User")
+      .findById(decoded.userId)
+      .select("-password");
+    if (!user || user.isActive === false) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    const accessToken = generateAccessToken(user, true);
+    const newRefreshToken = generateRefreshToken(user);
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    res.cookie("hk_refresh", newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: sevenDaysMs,
+      path: "/api/auth/refresh",
+    });
+
+    return res.json({
+      token: accessToken,
+      user: {
+        name: user.name,
+        email: user.email,
+        plan: user.plan,
+      },
+    });
+  } catch (err) {
+    return res.status(401).json({ error: "Refresh failed" });
+  }
+};
 /**
  * Get current user profile
  * GET /api/auth/me

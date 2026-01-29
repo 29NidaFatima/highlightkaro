@@ -6,6 +6,7 @@ import { API_BASE_URL } from "../config/api";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,7 +74,8 @@ export default function Login() {
       const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, rememberMe }),
+        credentials: "include",
       });
 
       const data = await res.json();
@@ -155,6 +157,20 @@ export default function Login() {
           {passwordError && (
             <p className="text-xs text-red-600 mt-1">{passwordError}</p>
           )}
+        </div>
+
+        {/* Remember Me */}
+        <div className="mb-6 flex items-center gap-2">
+          <input
+            id="rememberMe"
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            disabled={isSubmitting}
+          />
+          <label htmlFor="rememberMe" className="text-sm text-gray-700">
+            Remember Me
+          </label>
         </div>
 
         {/* Login Button */}
