@@ -47,7 +47,7 @@ exports.createPaymentLink = async (req, res) => {
     }
 
     const amountMinor = toMinorUnits(planPricing.amount);
-=
+
     const paymentLinkOptions = {
       amount: amountMinor,
       currency: planPricing.currency,
