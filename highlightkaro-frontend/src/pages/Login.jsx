@@ -3,10 +3,12 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
 import { showToast } from "../utils/toast";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -146,16 +148,27 @@ export default function Login() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Password
           </label>
-          <input
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            className={`w-full p-2.5 rounded-lg border ${passwordError ? "border-red-300" : "border-gray-300"
-              } focus:outline-none focus:ring-2 focus:ring-cyan-400`}
-            onChange={handlePasswordChange}
-            onBlur={() => validatePassword(password)}
-            disabled={isSubmitting}
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••"
+              value={password}
+              className={`w-full pr-10 p-2.5 rounded-lg border ${passwordError ? "border-red-300" : "border-gray-300"
+                } focus:outline-none focus:ring-2 focus:ring-cyan-400`}
+              onChange={handlePasswordChange}
+              onBlur={() => validatePassword(password)}
+              disabled={isSubmitting}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              aria-label="Toggle password visibility"
+              disabled={isSubmitting}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
           {passwordError && (
             <p className="text-xs text-red-600 mt-1">{passwordError}</p>
           )}
