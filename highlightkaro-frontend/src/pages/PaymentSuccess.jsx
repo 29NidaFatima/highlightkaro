@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Check } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { confirmPaymentFromCallback } from "../api/paymentApi";
 
 const PLAN_FEATURES = {
   basic30: [
@@ -23,13 +25,22 @@ const PLAN_FEATURES = {
 
 export default function PaymentSuccess() {
   const navigate = useNavigate();
-  const { refreshUser, user } = useAuth();
+  const location = useLocation();
+  const { refreshUser, user, token } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(true);
 
   useEffect(() => {
-    // Auto-refresh user data after payment
+    // Confirm payment using callback params (fallback when webhook is delayed)
     const refresh = async () => {
       try {
+        const params = new URLSearchParams(location.search);
+        if (params.size > 0) {
+          try {
+            await confirmPaymentFromCallback(params, token);
+          } catch {
+            // ignore; webhook may handle it
+          }
+        }
         await refreshUser();
       } catch (err) {
         console.error("Failed to refresh user data:", err);
@@ -39,7 +50,7 @@ export default function PaymentSuccess() {
     };
 
     refresh();
-  }, [refreshUser]);
+  }, [refreshUser, location.search, token]);
 
   const features = user?.plan && PLAN_FEATURES[user.plan] ? PLAN_FEATURES[user.plan] : [];
 

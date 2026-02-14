@@ -60,7 +60,7 @@ exports.createPaymentLink = async (req, res) => {
         email: true,
       },
       reminder_enable: true,
-      callback_url: `${process.env.FRONTEND_URL || "https://highlightkaro-online.onrender.com"}/payment-success`,
+      callback_url: `${process.env.FRONTEND_URL || "https://highlightkaro-1.onrender.com"}/payment-success`,
       callback_method: "get",
     };
 
@@ -201,5 +201,80 @@ exports.verifyWebhook = async (req, res) => {
   } catch (err) {
     console.error("Webhook verification error:", err);
     res.status(500).json({ error: "Webhook processing failed" });
+  }
+};
+
+/**
+ * Confirm payment on user return (callback fallback)
+ * GET /api/payment/confirm?razorpay_payment_link_id=plink_xxx
+ * Requires auth; verifies link status with Razorpay and activates plan.
+ */
+exports.confirmPayment = async (req, res) => {
+  try {
+    const linkId =
+      req.query.razorpay_payment_link_id ||
+      req.query.payment_link_id ||
+      req.query.plink ||
+      "";
+
+    if (!linkId) {
+      return res.status(400).json({ error: "Missing payment link id" });
+    }
+
+    // Find pending/paid record for this link
+    let payment = await Payment.findOne({
+      razorpayPaymentLinkId: linkId,
+    });
+
+    if (!payment) {
+      return res.status(404).json({ error: "Payment record not found" });
+    }
+
+    // If already processed, ensure user plan is up to date and return success
+    if (payment.status === "paid") {
+      const user = await User.findById(payment.userId);
+      if (user && user.plan !== payment.plan) {
+        user.plan = payment.plan;
+        await user.save();
+      }
+      return res.json({ ok: true, status: "paid" });
+    }
+
+    // Fetch latest status from Razorpay
+    const link = await razorpayInstance.paymentLink.fetch(linkId);
+    if (!link) {
+      return res.status(400).json({ error: "Unable to verify payment link" });
+    }
+
+    // Accept paid links only
+    if (link.status !== "paid") {
+      return res.status(400).json({ error: "Payment not completed" });
+    }
+
+    // Extract payment id when available
+    const rpPaymentId =
+      link?.payments?.[0]?.id || link?.payment_id || null;
+
+    // Basic amount check in minor units
+    if (typeof link.amount === "number" && link.amount !== payment.amount) {
+      return res.status(400).json({ error: "Amount mismatch" });
+    }
+
+    // Mark as paid and activate plan
+    payment.razorpayPaymentId = rpPaymentId || payment.razorpayPaymentId;
+    payment.status = "paid";
+    payment.processedAt = new Date();
+    await payment.save();
+
+    const user = await User.findById(payment.userId);
+    if (user) {
+      user.plan = payment.plan;
+      await user.save();
+    }
+
+    return res.json({ ok: true, status: "paid" });
+  } catch (err) {
+    console.error("Confirm payment error:", err);
+    return res.status(500).json({ error: "Payment confirmation failed" });
   }
 };

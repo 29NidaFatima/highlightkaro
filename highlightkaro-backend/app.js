@@ -12,9 +12,10 @@ const pricingRoutes = require("./routes/pricing.routes");
 
 
 const app = express();
+const defaultFrontend = "https://highlightkaro-1.onrender.com";
 const allowedOrigins = process.env.FRONTEND_URL
-  ? [process.env.FRONTEND_URL, "http://localhost:5173", "http://localhost:5174"]
-  : ["http://localhost:5173", "http://localhost:5174"];
+  ? [process.env.FRONTEND_URL, defaultFrontend, "http://localhost:5173", "http://localhost:5174"]
+  : [defaultFrontend, "http://localhost:5173", "http://localhost:5174"];
 
 app.post("/api/payment/webhook", express.raw({ type: "application/json" }), paymentController.verifyWebhook);
 
