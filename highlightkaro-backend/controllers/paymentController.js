@@ -48,6 +48,9 @@ exports.createPaymentLink = async (req, res) => {
 
     const amountMinor = toMinorUnits(planPricing.amount);
 
+    const backendUrl = process.env.BACKEND_URL && process.env.BACKEND_URL.trim();
+    const frontendUrl = process.env.FRONTEND_URL || "https://highlightkaro-1.onrender.com";
+
     const paymentLinkOptions = {
       amount: amountMinor,
       currency: planPricing.currency,
@@ -60,7 +63,10 @@ exports.createPaymentLink = async (req, res) => {
         email: true,
       },
       reminder_enable: true,
-      callback_url: `${process.env.FRONTEND_URL || "https://highlightkaro-1.onrender.com"}/payment-success`,
+      // Prefer server callback that will redirect user to the correct frontend success URL
+      callback_url: backendUrl
+        ? `${backendUrl.replace(/\/+$/, "")}/api/payment/callback`
+        : `${frontendUrl.replace(/\/+$/, "")}/payment-success`,
       callback_method: "get",
     };
 
@@ -276,5 +282,22 @@ exports.confirmPayment = async (req, res) => {
   } catch (err) {
     console.error("Confirm payment error:", err);
     return res.status(500).json({ error: "Payment confirmation failed" });
+  }
+};
+
+/**
+ * Public GET callback endpoint used by Razorpay Payment Links
+ * Redirects the customer to frontend /payment-success preserving query string.
+ * No auth required.
+ */
+exports.publicCallbackRedirect = async (req, res) => {
+  try {
+    const frontendUrl = (process.env.FRONTEND_URL || "https://highlightkaro-1.onrender.com").replace(/\/+$/, "");
+    const usp = new URLSearchParams(req.query || {});
+    const redirectUrl = `${frontendUrl}/payment-success${usp.toString() ? `?${usp.toString()}` : ""}`;
+    return res.redirect(302, redirectUrl);
+  } catch (err) {
+    console.error("Callback redirect error:", err);
+    return res.status(500).send("Callback error");
   }
 };
