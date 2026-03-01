@@ -16,6 +16,7 @@ function App() {
       <Route path="/upgrade" element={<Upgrade />} />
       <Route path="/payment-redirect" element={<PaymentRedirect />} />
       <Route path="/payment-success" element={<PaymentSuccess />} />
+      <Route path="/payment_success" element={<PaymentSuccess />} />
       <Route path="/payment-failed" element={<PaymentFailed />} />
     </Routes>
   );
