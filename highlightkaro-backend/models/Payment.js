@@ -14,9 +14,15 @@ const PaymentSchema = new mongoose.Schema(
       required: true,
     },
 
+    // Minor units (paise / cents)
     amount: {
       type: Number,
-      required: true, 
+      required: true,
+    },
+
+    currency: {
+      type: String,
+      default: "INR",
     },
 
     razorpayPaymentLinkId: {

@@ -1,15 +1,12 @@
-import { API_BASE_URL } from "../config/api";
+import { apiFetch } from "./client";
 
 export const renderVideo = async (token, formData) => {
   if (!token) {
     throw new Error("Authentication token is missing. Please login again.");
   }
 
-  const res = await fetch(`${API_BASE_URL}/api/render`, {
+  const res = await apiFetch("/api/render", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
     body: formData,
   });
 
@@ -23,7 +20,10 @@ export const renderVideo = async (token, formData) => {
         `Daily export limit reached (${errorData.limit} exports). Upgrade to Basic plan for unlimited exports.`
       );
     }
-    
+    if (res.status === 401) {
+      throw new Error("Your session has expired. Please login again.");
+    }
+
     throw new Error(errorMsg);
   }
 

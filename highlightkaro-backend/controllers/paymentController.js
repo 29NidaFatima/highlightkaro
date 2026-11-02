@@ -3,18 +3,97 @@ const crypto = require("crypto");
 const User = require("../models/User");
 const Payment = require("../models/Payment");
 const { toMinorUnits } = require("../config/pricingConfig");
+const { PLAN_DURATION_DAYS, PLAN_ORDER } = require("../config/planConfig");
 const pricingService = require("../services/pricing.service");
+
+if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  console.error("RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are not set; payments will fail");
+}
 
 // Initialize Razorpay
 const razorpayInstance = new razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
+  key_id: process.env.RAZORPAY_KEY_ID || "missing",
+  key_secret: process.env.RAZORPAY_KEY_SECRET || "missing",
 });
-
 
 const PLAN_NAME = {
   basic30: "Basic Plan",
   pro99: "Pro Plan",
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const getFrontendUrl = () =>
+  (process.env.FRONTEND_URL || "https://highlightkaro-online.onrender.com")
+    .split(",")[0]
+    .trim()
+    .replace(/\/+$/, "");
+
+// Constant-time compare of two hex signatures
+const safeEqualHex = (a, b) => {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+};
+
+/**
+ * Verify the signature Razorpay appends to the Payment Link callback URL.
+ * signature = HMAC_SHA256(link_id|reference_id|status|payment_id, key_secret)
+ */
+const verifyCallbackSignature = (query) => {
+  const {
+    razorpay_payment_id: paymentId,
+    razorpay_payment_link_id: linkId,
+    razorpay_payment_link_reference_id: referenceId = "",
+    razorpay_payment_link_status: status,
+    razorpay_signature: signature,
+  } = query || {};
+
+  if (!paymentId || !linkId || !status || !signature) return false;
+
+  const expected = crypto
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
+    .update(`${linkId}|${referenceId}|${status}|${paymentId}`)
+    .digest("hex");
+
+  return safeEqualHex(expected, signature);
+};
+
+/**
+ * Mark a payment as paid and give the user the plan for PLAN_DURATION_DAYS.
+ * Buying the plan you already have extends it from its current expiry.
+ * Safe to call more than once for the same payment.
+ */
+const activatePlan = async (payment, razorpayPaymentId) => {
+  // Atomically claim the payment so webhook + confirm can't both apply it
+  const claimed = await Payment.findOneAndUpdate(
+    { _id: payment._id, status: { $ne: "paid" } },
+    {
+      status: "paid",
+      processedAt: new Date(),
+      ...(razorpayPaymentId ? { razorpayPaymentId } : {}),
+    },
+    { new: true }
+  );
+
+  const user = await User.findById(payment.userId);
+  if (!user) return null;
+
+  if (!claimed) {
+    // Already applied earlier
+    return user;
+  }
+
+  const now = Date.now();
+  const sameActivePlan =
+    user.plan === payment.plan && user.planExpiresAt && user.planExpiresAt.getTime() > now;
+  const base = sameActivePlan ? user.planExpiresAt.getTime() : now;
+
+  user.plan = payment.plan;
+  user.planExpiresAt = new Date(base + PLAN_DURATION_DAYS * DAY_MS);
+  await user.save();
+
+  console.log("[Payment] Plan activated:", user._id.toString(), "->", user.plan, "until", user.planExpiresAt.toISOString());
+  return user;
 };
 
 /**
@@ -31,10 +110,9 @@ exports.createPaymentLink = async (req, res) => {
       return res.status(400).json({ error: "Invalid plan" });
     }
 
- 
+    // Allow upgrading to a higher plan, or renewing the current one
     const currentPlan = req.user.plan;
-    const planOrder = ["free", "basic30", "pro99"];
-    if (planOrder.indexOf(currentPlan) >= planOrder.indexOf(plan)) {
+    if (PLAN_ORDER.indexOf(plan) < PLAN_ORDER.indexOf(currentPlan)) {
       return res.status(400).json({
         error: "You can only upgrade to a higher plan",
       });
@@ -49,7 +127,7 @@ exports.createPaymentLink = async (req, res) => {
     const amountMinor = toMinorUnits(planPricing.amount);
 
     const backendUrl = process.env.BACKEND_URL && process.env.BACKEND_URL.trim();
-    const frontendUrl = process.env.FRONTEND_URL || "https://highlightkaro-1.onrender.com";
+    const frontendUrl = getFrontendUrl();
 
     const paymentLinkOptions = {
       amount: amountMinor,
@@ -63,10 +141,16 @@ exports.createPaymentLink = async (req, res) => {
         email: true,
       },
       reminder_enable: true,
-      // Prefer server callback that will redirect user to the correct frontend success URL
+      // Link is useless once the user has walked away; expire it after 1 hour
+      expire_by: Math.floor(Date.now() / 1000) + 60 * 60,
+      notes: {
+        userId: userId.toString(),
+        plan,
+      },
+      // Prefer server callback that will redirect user to the correct frontend URL
       callback_url: backendUrl
         ? `${backendUrl.replace(/\/+$/, "")}/api/payment/callback`
-        : `${frontendUrl.replace(/\/+$/, "")}/payment-success`,
+        : `${frontendUrl}/payment-success`,
       callback_method: "get",
     };
 
@@ -79,6 +163,7 @@ exports.createPaymentLink = async (req, res) => {
       userId,
       plan,
       amount: amountMinor,
+      currency: planPricing.currency,
       razorpayPaymentLinkId: paymentLink.id,
       status: "pending",
     });
@@ -92,7 +177,7 @@ exports.createPaymentLink = async (req, res) => {
       plan: plan,
     });
   } catch (err) {
-    console.error("Payment link creation error:", err);
+    console.error("Payment link creation error:", err?.error || err);
     res.status(500).json({ error: "Failed to create payment link" });
   }
 };
@@ -110,97 +195,79 @@ exports.verifyWebhook = async (req, res) => {
       return res.status(400).json({ error: "Missing webhook signature" });
     }
 
-    const rawBody = req.body;
+    const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from("");
 
-    console.log("[Webhook] Received webhook");
     const generatedSignature = crypto
       .createHmac("sha256", webhookSecret)
       .update(rawBody)
       .digest("hex");
 
-    if (generatedSignature !== webhookSignature) {
+    if (!safeEqualHex(generatedSignature, webhookSignature)) {
       console.log("[Webhook] Signature mismatch");
       return res.status(401).json({ error: "Invalid webhook signature" });
     }
 
     const payload = JSON.parse(rawBody.toString());
     const event = payload.event;
-    const paymentEntity = payload.payload?.payment_link?.entity;
+    const linkEntity = payload.payload?.payment_link?.entity;
+    const paymentEntity = payload.payload?.payment?.entity;
 
     console.log("[Webhook] Event:", event);
 
     if (event === "payment_link.paid") {
-      const paymentLinkId = paymentEntity.id;
-      const paymentId = paymentEntity.payments?.[0]?.id;
+      const paymentLinkId = linkEntity?.id;
+      // Razorpay sends the payment under payload.payment; older code read payment_link.payments
+      const paymentId = paymentEntity?.id || linkEntity?.payments?.[0]?.id;
 
       if (!paymentLinkId || !paymentId) {
         return res.status(400).json({ error: "Invalid payment data" });
       }
 
-      console.log("[Webhook] payment_link_id:", paymentLinkId, "payment_id:", paymentId);
-      const payment = await Payment.findOne({
-        razorpayPaymentLinkId: paymentLinkId,
-        status: "pending",
-      });
+      const payment = await Payment.findOne({ razorpayPaymentLinkId: paymentLinkId });
 
       if (!payment) {
-        console.log("Payment record not found or already processed");
+        // Not ours (e.g. a link created by another environment); ack so Razorpay stops retrying
+        console.log("[Webhook] No payment record for", paymentLinkId);
+        return res.status(200).json({ message: "Ignored" });
+      }
+
+      if (payment.status === "paid") {
         return res.status(200).json({ message: "Payment already processed" });
       }
 
-      console.log("[Webhook] Payment record found:", payment._id.toString());
-      const existingPaid = await Payment.findOne({
-        razorpayPaymentId: paymentId,
-        status: "paid",
-      });
-
-      if (existingPaid) {
-        console.log("Payment already processed");
-        return res.status(200).json({ message: "Payment already processed" });
-      }
-
+      // Confirm with Razorpay rather than trusting the payload alone
+      let razorpayPayment;
       try {
-        const razorpayPayment = await razorpayInstance.payments.fetch(
-          paymentId
-        );
-
-        if (
-          razorpayPayment.status !== "captured" ||
-          razorpayPayment.amount !== payment.amount
-        ) {
-          payment.status = "failed";
-          await payment.save();
+        razorpayPayment = await razorpayInstance.payments.fetch(paymentId);
+      } catch (razorpayErr) {
+        console.error("[Webhook] Razorpay API error:", razorpayErr?.error || razorpayErr);
+        if (razorpayErr?.statusCode === 400 || razorpayErr?.statusCode === 404) {
           return res.status(400).json({ error: "Payment verification failed" });
         }
-
-        console.log("[Webhook] Razorpay verification passed");
-        payment.razorpayPaymentId = paymentId;
-        payment.status = "paid";
-        payment.processedAt = new Date();
-        await payment.save();
-
-        const user = await User.findById(payment.userId);
-        if (user) {
-          console.log("[Webhook] Updating user plan:", user._id.toString(), "->", payment.plan);
-          user.plan = payment.plan;
-          await user.save();
-          console.log("[Webhook] User plan updated:", user.plan);
-        }
-
-        return res.status(200).json({ message: "Payment verified successfully" });
-      } catch (razorpayErr) {
-        console.error("Razorpay API error:", razorpayErr);
+        // Transient error: 5xx makes Razorpay retry later
         return res.status(500).json({ error: "Payment verification failed" });
       }
+
+      if (
+        razorpayPayment.status !== "captured" ||
+        razorpayPayment.amount !== payment.amount
+      ) {
+        console.log("[Webhook] Verification failed:", razorpayPayment.status, razorpayPayment.amount, payment.amount);
+        return res.status(400).json({ error: "Payment verification failed" });
+      }
+
+      await activatePlan(payment, paymentId);
+      return res.status(200).json({ message: "Payment verified successfully" });
     }
 
-
     if (event === "payment_link.cancelled" || event === "payment_link.expired") {
-      const paymentLinkId = paymentEntity.id;
-      await Payment.findOneAndUpdate(
-        { razorpayPaymentLinkId: paymentLinkId, status: "pending" },
-        { status: event.includes("expired") ? "expired" : "failed" }
-      );
+      const paymentLinkId = linkEntity?.id;
+      if (paymentLinkId) {
+        await Payment.findOneAndUpdate(
+          { razorpayPaymentLinkId: paymentLinkId, status: "pending" },
+          { status: event.includes("expired") ? "expired" : "failed" }
+        );
+      }
     }
 
     res.status(200).json({ message: "Webhook received" });
@@ -227,77 +294,85 @@ exports.confirmPayment = async (req, res) => {
       return res.status(400).json({ error: "Missing payment link id" });
     }
 
-    // Find pending/paid record for this link
-    let payment = await Payment.findOne({
+    const payment = await Payment.findOne({
       razorpayPaymentLinkId: linkId,
+      userId: req.user._id,
     });
 
     if (!payment) {
       return res.status(404).json({ error: "Payment record not found" });
     }
 
-    // If already processed, ensure user plan is up to date and return success
     if (payment.status === "paid") {
       const user = await User.findById(payment.userId);
-      if (user && user.plan !== payment.plan) {
-        user.plan = payment.plan;
-        await user.save();
-      }
-      return res.json({ ok: true, status: "paid" });
+      return res.json({ ok: true, status: "paid", user: user?.toPublic() });
     }
 
-    // Fetch latest status from Razorpay
+    // Razorpay is the source of truth for the link status
     const link = await razorpayInstance.paymentLink.fetch(linkId);
     if (!link) {
       return res.status(400).json({ error: "Unable to verify payment link" });
     }
 
-    // Accept paid links only
     if (link.status !== "paid") {
-      return res.status(400).json({ error: "Payment not completed" });
+      if (link.status === "cancelled" || link.status === "expired") {
+        payment.status = link.status === "expired" ? "expired" : "failed";
+        await payment.save();
+      }
+      return res.status(402).json({ ok: false, status: link.status, error: "Payment not completed" });
     }
 
-    // Extract payment id when available
-    const rpPaymentId =
-      link?.payments?.[0]?.id || link?.payment_id || null;
-
-    // Basic amount check in minor units
     if (typeof link.amount === "number" && link.amount !== payment.amount) {
       return res.status(400).json({ error: "Amount mismatch" });
     }
 
-    // Mark as paid and activate plan
-    payment.razorpayPaymentId = rpPaymentId || payment.razorpayPaymentId;
-    payment.status = "paid";
-    payment.processedAt = new Date();
-    await payment.save();
+    const rpPaymentId =
+      link?.payments?.[0]?.payment_id || link?.payments?.[0]?.id || req.query.razorpay_payment_id || null;
 
-    const user = await User.findById(payment.userId);
-    if (user) {
-      user.plan = payment.plan;
-      await user.save();
-    }
-
-    return res.json({ ok: true, status: "paid" });
+    const user = await activatePlan(payment, rpPaymentId);
+    return res.json({ ok: true, status: "paid", user: user?.toPublic() });
   } catch (err) {
-    console.error("Confirm payment error:", err);
+    console.error("Confirm payment error:", err?.error || err);
     return res.status(500).json({ error: "Payment confirmation failed" });
   }
 };
 
 /**
- * Public GET callback endpoint used by Razorpay Payment Links
- * Redirects the customer to frontend /payment-success preserving query string.
- * No auth required.
+ * Public GET callback endpoint used by Razorpay Payment Links.
+ * Sends the customer to /payment-success or /payment-failed, preserving the query string.
+ * No auth required; the plan is only activated by the webhook or /confirm.
  */
 exports.publicCallbackRedirect = async (req, res) => {
   try {
-    const frontendUrl = (process.env.FRONTEND_URL || "https://highlightkaro-1.onrender.com").replace(/\/+$/, "");
+    const frontendUrl = getFrontendUrl();
     const usp = new URLSearchParams(req.query || {});
-    const redirectUrl = `${frontendUrl}/payment-success${usp.toString() ? `?${usp.toString()}` : ""}`;
+    const status = req.query.razorpay_payment_link_status;
+    const isPaid = status === "paid" && verifyCallbackSignature(req.query);
+    const target = isPaid ? "payment-success" : "payment-failed";
+    const redirectUrl = `${frontendUrl}/${target}${usp.toString() ? `?${usp.toString()}` : ""}`;
     return res.redirect(302, redirectUrl);
   } catch (err) {
     console.error("Callback redirect error:", err);
     return res.status(500).send("Callback error");
   }
 };
+
+/**
+ * Payment history for the logged-in user
+ * GET /api/payment/history
+ */
+exports.getPaymentHistory = async (req, res) => {
+  try {
+    const payments = await Payment.find({ userId: req.user._id, status: "paid" })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .select("plan amount currency status processedAt createdAt -_id")
+      .lean();
+    return res.json({ payments });
+  } catch (err) {
+    console.error("Payment history error:", err);
+    return res.status(500).json({ error: "Failed to load payment history" });
+  }
+};
+
+exports._internal = { verifyCallbackSignature, activatePlan };

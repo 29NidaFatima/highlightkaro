@@ -54,6 +54,12 @@ const PLAN_CONFIG = {
   },
 };
 
+// Paid plans are monthly
+const PLAN_DURATION_DAYS = 30;
+
+// Order used to decide what counts as an upgrade
+const PLAN_ORDER = ["free", "basic30", "pro99"];
+
 /**
  * Get plan configuration
  */
@@ -108,6 +114,8 @@ module.exports = {
   isAnimationAllowed,
   checkExportLimit,
   getMaxResolution,
+  PLAN_DURATION_DAYS,
+  PLAN_ORDER,
   ALL_COLORS,
   ALL_ANIMATIONS,
 };

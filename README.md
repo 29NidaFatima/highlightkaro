@@ -24,7 +24,9 @@ Perfect for creators, editors, educators, or anyone who needs clean animated hig
 - 🖼️ Upload & crop images  
 - ✏️ Freeform highlight/selection drawing  
 - 🎨 Choose highlight **color** & **opacity**  
-- 🎞️ Two animation modes: **Left → Right wipe** & **Pulse**  
+- 🎞️ Five animations: **Left → Right**, **Down → Up**, **Rise**, **Glow** & **Underline** (preview matches the export)  
+- 🖍️ Multiple highlights per video  
+- 💳 Razorpay plans (Basic / Pro, 30 days, renewable) with webhook + redirect confirmation  
 - ⚡ Real-time canvas animation preview  
 - 🎥 MP4 export via backend FFmpeg  
 - 🌗 Light/Dark mode  

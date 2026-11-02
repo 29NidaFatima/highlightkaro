@@ -35,6 +35,12 @@ const UserSchema = new mongoose.Schema(
       default: "free",
     },
 
+    // When a paid plan lapses; null for free users
+    planExpiresAt: {
+      type: Date,
+      default: null,
+    },
+
     isActive: {
       type: Boolean,
       default: true,
@@ -42,5 +48,30 @@ const UserSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+/**
+ * Drop an expired paid plan back to free. Returns true if the user was changed.
+ */
+UserSchema.methods.expirePlanIfNeeded = async function () {
+  if (this.plan !== "free" && this.planExpiresAt && this.planExpiresAt <= new Date()) {
+    this.plan = "free";
+    this.planExpiresAt = null;
+    await this.save();
+    return true;
+  }
+  return false;
+};
+
+/**
+ * Public shape of a user returned to the frontend
+ */
+UserSchema.methods.toPublic = function () {
+  return {
+    name: this.name,
+    email: this.email,
+    plan: this.plan,
+    planExpiresAt: this.planExpiresAt || null,
+  };
+};
 
 module.exports = mongoose.model("User", UserSchema);

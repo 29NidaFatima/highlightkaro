@@ -16,6 +16,7 @@ import { saveExportState, getExportState, clearExportState } from "./utils/expor
 import { createPaymentLink } from "./api/paymentApi";
 import { fetchPricing } from "./api/pricingApi";
 import { renderVideo } from "./api/renderApi";
+import { getHighlightFrame } from "./utils/highlightAnimation";
 import { PLAN_CODES } from "./config/pricingConfig";
 import { showToast } from "./utils/toast";
 
@@ -26,7 +27,7 @@ const HighlightKaro = () => {
   const [image, setImage] = useState(null);
   const [pricingData, setPricingData] = useState(null);
   const [recommendedRegion, setRecommendedRegion] = useState("global");
-  const [imageDimensions, setImageDimensions] = useState({
+  const [, setImageDimensions] = useState({
     width: 0,
     height: 0,
   });
@@ -303,19 +304,16 @@ const HighlightKaro = () => {
       ctx.fillStyle = hl.color;
       ctx.globalAlpha = hl.opacity;
 
-      const drawX = hl.x * scale;
-      let drawWidth = hl.width * scale;
-
-      if (isAnimating && hl.animation === "left-to-right") {
-        const progress = animationTime / animationDuration;
-        drawWidth = hl.width * scale * progress;
-      } else if (isAnimating && hl.animation === "pulse") {
-        const progress = animationTime / animationDuration;
-        const pulse = Math.sin(progress * Math.PI * 4) * 0.3 + 0.7;
-        ctx.globalAlpha = hl.opacity * pulse;
-      }
-
-      ctx.fillRect(drawX, hl.y * scale, drawWidth, hl.height * scale);
+      // Same maths as the exported video; when not playing, show the final frame
+      const t = isAnimating ? animationTime / animationDuration : 1;
+      const frame = getHighlightFrame(
+        hl.animation || "left-to-right",
+        t,
+        { x: hl.x * scale, y: hl.y * scale, width: hl.width * scale, height: hl.height * scale },
+        hl.opacity
+      );
+      ctx.globalAlpha = frame.opacity;
+      ctx.fillRect(frame.x, frame.y, frame.width, frame.height);
       ctx.globalCompositeOperation = "source-over";
       ctx.globalAlpha = 1;
     });
@@ -494,19 +492,24 @@ const HighlightKaro = () => {
       const blob = await response.blob();
       const file = new File([blob], "image.png", { type: "image/png" });
 
-      const hl = highlightsData[0];
-
       const formData = new FormData();
       formData.append("image", file);
-      formData.append("x", hl.x);
-      formData.append("y", hl.y);
-      formData.append("w", hl.width);
-      formData.append("h", hl.height);
-      formData.append("color", hl.color);
-      formData.append("opacity", hl.opacity * 100);
+      formData.append(
+        "highlights",
+        JSON.stringify(
+          highlightsData.map((hl) => ({
+            x: hl.x,
+            y: hl.y,
+            width: hl.width,
+            height: hl.height,
+            color: hl.color,
+            opacity: hl.opacity,
+            animation: hl.animation || "left-to-right",
+          }))
+        )
+      );
       formData.append("duration", settings.duration);
       formData.append("fps", settings.fps);
-      formData.append("anim", hl.animation || "left-to-right");
 
       const videoBlob = await renderVideo(token, formData);
       const url = URL.createObjectURL(videoBlob);
@@ -794,8 +797,13 @@ const HighlightKaro = () => {
 
                   <span className={`text-sm font-semibold
           ${darkMode ? "text-yellow-400" : "text-cyan-700"}`}>
-                    {user.plan.toUpperCase()}
+                    {PLAN_CONFIG[user.plan]?.name?.toUpperCase() || user.plan.toUpperCase()}
                   </span>
+                  {user.planExpiresAt && (
+                    <span className={`text-[10px] ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      until {new Date(user.planExpiresAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+                    </span>
+                  )}
                 </div>
 
                 {/* Divider */}

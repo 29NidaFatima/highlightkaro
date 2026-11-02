@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { register, login, getMe, refresh } = require("../controllers/authController");
+const { register, login, getMe, refresh, logout } = require("../controllers/authController");
 const { validateRegister, validateLogin } = require("../middleware/validation.middleware");
 const auth = require("../middleware/auth.middleware");
 
@@ -15,5 +15,8 @@ router.get("/me", auth, getMe);
 
 // Refresh access token (uses httpOnly cookie)
 router.post("/refresh", refresh);
+
+// Clear refresh cookie
+router.post("/logout", logout);
 
 module.exports = router;

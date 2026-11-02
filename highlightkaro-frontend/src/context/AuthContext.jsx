@@ -1,75 +1,92 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { API_BASE_URL } from "../config/api";
+import { apiFetch, refreshSession } from "../api/client";
 
 const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(
-    JSON.parse(localStorage.getItem("user")) || null
-  );
-  const [token, setToken] = useState(
-    localStorage.getItem("token")
-  );
+const readStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user")) || null;
+  } catch {
+    return null;
+  }
+};
 
-  const login = (data) => {
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(readStoredUser);
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
+
+  const login = useCallback((data) => {
     setUser(data.user);
     setToken(data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
     localStorage.setItem("token", data.token);
-  };
+  }, []);
 
-  const logout = () => {
+  const clearSession = useCallback(() => {
     setUser(null);
     setToken(null);
-    localStorage.clear();
-  };
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+  }, []);
 
-  // Refresh user after payment
-  const refreshUser = async () => {
-    if (!token) return;
+  const logout = useCallback(() => {
+    clearSession();
+    // Drop the refresh cookie too, otherwise the next visit logs straight back in
+    fetch(`${API_BASE_URL}/api/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
+  }, [clearSession]);
+
+  // Refresh user after payment / on load. Returns the fresh user or null.
+  const refreshUser = useCallback(async () => {
+    if (!localStorage.getItem("token")) return null;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+      const res = await apiFetch("/api/auth/me");
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
         localStorage.setItem("user", JSON.stringify(data.user));
+        return data.user;
       }
     } catch (err) {
       console.error("Failed to refresh user", err);
     }
-  };
-
-  useEffect(() => {
-    const tryRefresh = async () => {
-      if (token) return;
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
-          method: "POST",
-          credentials: "include",
-        });
-        if (res.ok) {
-          const data = await res.json();
-          login(data);
-        }
-      } catch {}
-    };
-    tryRefresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return null;
   }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{ user, token, login, logout, refreshUser }}
-    >
-      {children}
-    </AuthContext.Provider>
+  // Keep state in sync with token refreshes done by apiFetch
+  useEffect(() => {
+    const onAuth = (e) => {
+      if (e.detail?.type === "refreshed") {
+        setToken(e.detail.token);
+        setUser(e.detail.user);
+      } else if (e.detail?.type === "expired") {
+        clearSession();
+      }
+    };
+    window.addEventListener("hk:auth", onAuth);
+    return () => window.removeEventListener("hk:auth", onAuth);
+  }, [clearSession]);
+
+  // On load: validate a stored token (and pick up plan changes / expiry),
+  // or restore a "remember me" session from the refresh cookie
+  useEffect(() => {
+    if (localStorage.getItem("token")) {
+      // Async: state is only set after the request resolves
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      refreshUser();
+    } else {
+      refreshSession();
+    }
+  }, [refreshUser]);
+
+  const value = useMemo(
+    () => ({ user, token, login, logout, refreshUser }),
+    [user, token, login, logout, refreshUser]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

@@ -3,6 +3,17 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { generateAccessToken, generateRefreshToken } = require("../utils/jwt");
 
+// Frontend and backend live on different sites, so the cookie must be
+// SameSite=None, which browsers only accept together with Secure
+// (localhost counts as secure, so this also works in development).
+const refreshCookieOptions = (maxAge) => ({
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+  maxAge,
+  path: "/api/auth",
+});
+
 exports.register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -66,23 +77,15 @@ exports.login = async (req, res) => {
     if (rememberMe) {
       const refreshToken = generateRefreshToken(user);
       const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-      res.cookie("hk_refresh", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "none",
-        maxAge: sevenDaysMs,
-        path: "/api/auth/refresh",
-      });
+      res.cookie("hk_refresh", refreshToken, refreshCookieOptions(sevenDaysMs));
     }
 
     // Response NEVER includes password (user object doesn't have password due to select: false)
+    await user.expirePlanIfNeeded();
+
     res.json({
       token,
-      user: {
-        name: user.name,
-        email: user.email,
-        plan: user.plan,
-      },
+      user: user.toPublic(),
     });
   } catch (err) {
     // NEVER log password in error messages
@@ -116,31 +119,21 @@ exports.refresh = async (req, res) => {
       return res.status(401).json({ error: "Invalid refresh token" });
     }
 
-    const user = await require("../models/User")
-      .findById(decoded.userId)
-      .select("-password");
+    const user = await User.findById(decoded.userId);
     if (!user || user.isActive === false) {
       return res.status(401).json({ error: "User not found" });
     }
 
+    await user.expirePlanIfNeeded();
+
     const accessToken = generateAccessToken(user, true);
     const newRefreshToken = generateRefreshToken(user);
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-    res.cookie("hk_refresh", newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
-      maxAge: sevenDaysMs,
-      path: "/api/auth/refresh",
-    });
+    res.cookie("hk_refresh", newRefreshToken, refreshCookieOptions(sevenDaysMs));
 
     return res.json({
       token: accessToken,
-      user: {
-        name: user.name,
-        email: user.email,
-        plan: user.plan,
-      },
+      user: user.toPublic(),
     });
   } catch (err) {
     return res.status(401).json({ error: "Refresh failed" });
@@ -161,13 +154,20 @@ exports.getMe = async (req, res) => {
     }
 
     res.json({
-      user: {
-        name: user.name,
-        email: user.email,
-        plan: user.plan,
-      },
+      user: user.toPublic(),
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch user profile" });
   }
+};
+
+/**
+ * Clear the refresh cookie
+ * POST /api/auth/logout
+ */
+exports.logout = async (req, res) => {
+  res.clearCookie("hk_refresh", refreshCookieOptions(undefined));
+  // Cookies set before the path change were scoped to /api/auth/refresh
+  res.clearCookie("hk_refresh", { ...refreshCookieOptions(undefined), path: "/api/auth/refresh" });
+  return res.json({ message: "Logged out" });
 };

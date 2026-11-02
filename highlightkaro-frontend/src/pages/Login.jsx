@@ -96,10 +96,12 @@ export default function Login() {
       if (returnPath === "export") {
         // State will be restored in HighlightKaro, but export won't auto-start
         navigate("/");
+      } else if (returnPath === "upgrade") {
+        navigate("/upgrade");
       } else {
         navigate("/");
       }
-    } catch (err) {
+    } catch {
       showToast("Login failed. Please check your connection and try again.", "error");
     } finally {
       setIsSubmitting(false);

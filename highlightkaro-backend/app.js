@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
+const mongoose = require("mongoose");
 require("dotenv").config();
-const port = process.env.PORT || 4000
 const connectDB = require("./config/db");
 const paymentController = require("./controllers/paymentController");
 
@@ -10,23 +10,32 @@ const renderRoutes = require("./routes/render.routes");
 const paymentRoutes = require("./routes/payment.routes");
 const pricingRoutes = require("./routes/pricing.routes");
 
-
 const app = express();
-const defaultFrontend = "https://highlightkaro-1.onrender.com";
-const allowedOrigins = process.env.FRONTEND_URL
-  ? [process.env.FRONTEND_URL, defaultFrontend, "http://localhost:5173", "http://localhost:5174"]
-  : [defaultFrontend, "http://localhost:5173", "http://localhost:5174"];
+const PORT = process.env.PORT || 5000;
 
-app.post("/api/payment/webhook", express.raw({ type: "application/json" }), paymentController.verifyWebhook);
+// Behind Render's proxy: lets req.ip use X-Forwarded-For
+app.set("trust proxy", 1);
+
+// FRONTEND_URL may hold a comma-separated list of allowed origins
+const allowedOrigins = [
+  ...(process.env.FRONTEND_URL || "").split(",").map((o) => o.trim().replace(/\/+$/, "")),
+  "https://highlightkaro-online.onrender.com",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:4173",
+].filter(Boolean);
+
+// Webhook needs the raw body for signature verification, so it is registered before express.json()
+app.post("/api/payment/webhook", express.raw({ type: "*/*" }), paymentController.verifyWebhook);
 
 app.use(
   cors({
     origin: (origin, callback) => {
-
+      // Non-browser requests (curl, Razorpay redirects) have no Origin
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, origin);
-
-      return callback(null, origin);
+      // Unknown origins get no CORS headers, so browsers block them
+      return callback(null, false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -35,17 +44,46 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
-const PORT = process.env.PORT || 5000;
+
+// Health check for Render and for waking the service from sleep
+app.get("/api/health", (req, res) => {
+  res.json({
+    ok: true,
+    db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    razorpay: Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
+    webhook: Boolean(process.env.RAZORPAY_WEBHOOK_SECRET),
+  });
+});
 
 app.use("/api/auth", authRoutes);
 app.use("/api", renderRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/pricing", pricingRoutes);
 
-app.listen(PORT, () => {
-  console.log(`HighlightKaro backend listening on port ${PORT}`);
+app.use("/api", (req, res) => {
+  res.status(404).json({ error: "Not found" });
 });
 
-connectDB();
+// Last-resort error handler (e.g. multer errors, bad JSON)
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  if (err?.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({ error: "Image is too large (max 15 MB)" });
+  }
+  if (err?.type === "entity.parse.failed") {
+    return res.status(400).json({ error: "Invalid JSON body" });
+  }
+  if (err?.status && err.status < 500) {
+    return res.status(err.status).json({ error: err.message });
+  }
+  console.error("Unhandled error:", err);
+  res.status(500).json({ error: "Something went wrong" });
+});
+
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`HighlightKaro backend listening on port ${PORT}`);
+  });
+});

@@ -1,52 +1,65 @@
-import { API_BASE_URL } from "../config/api";
+import { apiFetch } from "./client";
 
 export const createPaymentLink = async (plan, region, token) => {
   if (!token) {
     throw new Error("Authentication token is missing. Please login again.");
   }
 
-  const res = await fetch(`${API_BASE_URL}/api/payment/create-link`, {
+  const res = await apiFetch("/api/payment/create-link", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ plan, region }),
   });
 
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
+    if (res.status === 401) throw new Error("Your session has expired. Please login again.");
     throw new Error(data.error || "Payment initiation failed");
   }
 
   return data; // { paymentLinkUrl, plan, amount }
 };
 
+/**
+ * Ask the backend to verify a returning Razorpay payment.
+ * Resolves to { ok, status, user } — status is "paid" once the plan is active.
+ */
 export const confirmPaymentFromCallback = async (params, token) => {
   if (!token) {
     throw new Error("Authentication token is missing. Please login again.");
   }
-  const url = new URL(`${API_BASE_URL}/api/payment/confirm`);
-  // Pass-through known params from Razorpay callback
   const linkId =
     params.get("razorpay_payment_link_id") ||
     params.get("payment_link_id") ||
     params.get("plink");
-  if (linkId) url.searchParams.set("razorpay_payment_link_id", linkId);
+  if (!linkId) {
+    throw new Error("Missing payment reference");
+  }
 
-  const res = await fetch(url.toString(), {
+  const qs = new URLSearchParams({ razorpay_payment_link_id: linkId });
+  const paymentId = params.get("razorpay_payment_id");
+  if (paymentId) qs.set("razorpay_payment_id", paymentId);
+
+  const res = await apiFetch(`/api/payment/confirm?${qs}`, {
     method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-    },
+    headers: { Accept: "application/json" },
   });
 
   const data = await res.json().catch(() => ({}));
+  if (res.status === 402) {
+    // Not paid (yet)
+    return { ok: false, status: data.status || "pending" };
+  }
   if (!res.ok) {
     throw new Error(data.error || "Payment confirmation failed");
   }
   return data;
 };
 
+export const fetchPaymentHistory = async () => {
+  const res = await apiFetch("/api/payment/history", { headers: { Accept: "application/json" } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Failed to load payment history");
+  return data.payments || [];
+};

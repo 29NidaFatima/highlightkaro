@@ -37,6 +37,9 @@ module.exports = async (req, res, next) => {
       return res.status(401).json({ error: "Account is inactive" });
     }
 
+    // Monthly plans lapse back to free
+    await user.expirePlanIfNeeded();
+
     // Attach full user object to request (plan is always fresh from DB)
     req.user = user;
     next();

@@ -5,6 +5,12 @@ import { fetchPricing } from "../api/pricingApi";
 import { useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
 import { PLAN_CODES } from "../config/pricingConfig";
+import { showToast } from "../utils/toast";
+
+const PLAN_ORDER = ["free", "basic30", "pro99"];
+
+const formatDate = (iso) =>
+  iso ? new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : null;
 
 export default function Upgrade() {
   const { user, token } = useAuth();
@@ -12,11 +18,11 @@ export default function Upgrade() {
   const [pricingData, setPricingData] = useState(null);
   const [selectedRegion, setSelectedRegion] = useState("global"); // default
   const [pricingError, setPricingError] = useState("");
+  const [pendingPlan, setPendingPlan] = useState(null);
 
-  if (!user) {
-    navigate("/login");
-    return null;
-  }
+  useEffect(() => {
+    if (!user) navigate("/login?return=upgrade");
+  }, [user, navigate]);
 
   useEffect(() => {
     let mounted = true;
@@ -60,6 +66,8 @@ export default function Upgrade() {
   };
 
   const upgrade = async (plan) => {
+    if (pendingPlan) return;
+    setPendingPlan(plan);
     try {
       // Step 1: Call createPaymentLink with plan, region, and token
       const res = await createPaymentLink(plan, selectedRegion, token);
@@ -79,9 +87,26 @@ export default function Upgrade() {
       });
       
     } catch (err) {
-      alert(err.message || "Payment failed");
+      showToast(err.message || "Payment failed", "error");
+      setPendingPlan(null);
     }
   };
+
+  if (!user) return null;
+
+  const currentRank = PLAN_ORDER.indexOf(user.plan);
+  const expiresOn = formatDate(user.planExpiresAt);
+  // A plan can be bought if it's higher than the current one, or renewed if it's the same paid plan
+  const planButton = (code, buyLabel) => {
+    const rank = PLAN_ORDER.indexOf(code);
+    if (pendingPlan === code) return { text: "Creating payment link...", disabled: true };
+    if (!planPrices) return { text: buyLabel, disabled: true };
+    if (rank < currentRank) return { text: "Included in your plan", disabled: true };
+    if (rank === currentRank) return { text: "Renew for 1 month", disabled: !!pendingPlan, renew: true };
+    return { text: buyLabel, disabled: !!pendingPlan };
+  };
+  const basicBtn = planButton(PLAN_CODES.BASIC, "Upgrade to Basic");
+  const proBtn = planButton(PLAN_CODES.PRO, user.plan === "basic30" ? "Upgrade to Pro" : "Go Pro");
 
 
   return (
@@ -122,6 +147,13 @@ export default function Upgrade() {
           </div>
         )}
         
+        {user.plan !== "free" && (
+          <div className="mt-4 text-sm text-gray-600">
+            You're on <span className="font-semibold text-cyan-700">{user.plan === "pro99" ? "Pro" : "Basic"}</span>
+            {expiresOn ? <> · active until <span className="font-semibold">{expiresOn}</span></> : null}
+          </div>
+        )}
+
         {/* Recommended Badge */}
         {pricingData?.recommendedRegion === selectedRegion && (
           <div className="mt-2 text-xs text-cyan-600 font-medium">
@@ -163,9 +195,10 @@ export default function Upgrade() {
             { text: "No watermark", icon: "watermark" },
             { text: "Legendary Dark Mode", icon: "theme", highlight: true, tooltip: "Galaxy interface with reduced eye strain" },
           ]}
-          buttonText={user.plan === "basic30" ? "Current Plan" : "Upgrade to Basic"}
+          buttonText={basicBtn.text}
           onClick={() => upgrade(PLAN_CODES.BASIC)}
-          disabled={user.plan !== "free"}
+          disabled={basicBtn.disabled}
+          renewable={basicBtn.renew}
         />
 
         {/* PRO */}
@@ -183,9 +216,10 @@ export default function Upgrade() {
             { text: "Legendary Dark Mode", icon: "theme", highlight: true },
             { text: "Cloud save", icon: "cloud" },
           ]}
-          buttonText={user.plan === "pro99" ? "Current Plan" : "Go Pro"}
+          buttonText={proBtn.text}
           onClick={() => upgrade(PLAN_CODES.PRO)}
-          disabled={user.plan === "pro99"}
+          disabled={proBtn.disabled}
+          renewable={proBtn.renew}
         />
       </div>
       
@@ -256,6 +290,7 @@ function PlanCard({
   highlight,
   premium,
   current,
+  renewable,
 }) {
   return (
     <div
@@ -297,10 +332,10 @@ function PlanCard({
 
       <button
         onClick={onClick}
-        disabled={disabled || current}
+        disabled={disabled || (current && !renewable)}
         className={`w-full py-2.5 rounded-lg font-medium transition-all duration-200
           ${
-            disabled || current
+            disabled || (current && !renewable)
               ? "bg-gray-200 text-gray-500 cursor-not-allowed"
               : premium
               ? "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white shadow-md hover:shadow-lg"

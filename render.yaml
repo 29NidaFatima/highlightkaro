@@ -1,0 +1,14 @@
+# Render Blueprint: frontend with SPA routing so /payment-success and /payment_success work.
+# If you use this blueprint, the rewrite below fixes 404 on direct/refresh URLs.
+services:
+  - type: web
+    name: highlightkaro-frontend
+    runtime: static
+    rootDir: highlightkaro-frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./highlightkaro-frontend/dist
+    routes:
+      # SPA fallback: serve index.html for all paths so React Router can handle them
+      - type: rewrite
+        source: /*
+        destination: /index.html
