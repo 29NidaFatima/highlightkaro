@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerUser } from "../api/authApi";
 import { showToast } from "../utils/toast";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Mail, KeyRound, User, Check, ArrowRight, LoaderCircle } from "lucide-react";
+import AuthLayout from "../components/AuthLayout";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -103,72 +104,93 @@ export default function Register() {
     !emailError &&
     !passwordError;
 
+  // Live checklist under the password field
+  const passwordRules = [
+    { ok: password.length >= 8, text: "8+ characters" },
+    { ok: /[A-Z]/.test(password), text: "Uppercase" },
+    { ok: /[a-z]/.test(password), text: "Lowercase" },
+    { ok: /[0-9]/.test(password), text: "Number" },
+  ];
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cyan-50 via-blue-50 to-sky-50 px-4">
-      <div className="w-full max-w-sm bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-cyan-200 p-6">
-
-        {/* Title */}
-        <h2 className="text-2xl font-bold text-center text-cyan-600 mb-1">
-          Create Account
-        </h2>
-        <p className="text-center text-sm text-gray-600 mb-6">
-          Start creating highlight videos in seconds
-        </p>
-
+    <AuthLayout
+      title="Create your account"
+      subtitle="Free forever plan. Upgrade only when you need more."
+      footer={
+        <>
+          Already have an account?{" "}
+          <button
+            onClick={() => navigate("/login")}
+            className="font-semibold text-cyan-700 underline-offset-4 hover:underline"
+          >
+            Log in
+          </button>
+        </>
+      }
+    >
+      <form
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (isFormValid && !isSubmitting) handleRegister();
+        }}
+        className="space-y-5"
+      >
         {/* Name */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Full Name
-          </label>
-          <input
-            type="text"
-            placeholder="Your name"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              if (e.target.value) validateName(e.target.value);
-            }}
-            onBlur={() => validateName(name)}
-            disabled={isSubmitting}
-            className={`w-full p-2.5 rounded-lg border ${nameError ? "border-red-300" : "border-gray-300"
-              } focus:outline-none focus:ring-2 focus:ring-cyan-400`}
-          />
-          {nameError && (
-            <p className="text-xs text-red-600 mt-1">{nameError}</p>
-          )}
+        <div>
+          <label htmlFor="reg-name" className="hk-label">Full name</label>
+          <div className="relative">
+            <User size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              id="reg-name"
+              type="text"
+              autoComplete="name"
+              placeholder="Your name"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (e.target.value) validateName(e.target.value);
+              }}
+              onBlur={() => validateName(name)}
+              disabled={isSubmitting}
+              className={`hk-input pl-10 ${nameError ? "hk-input-error" : ""}`}
+            />
+          </div>
+          {nameError && <p className="hk-field-error">{nameError}</p>}
         </div>
 
         {/* Email */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email
-          </label>
-          <input
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              if (e.target.value) validateEmail(e.target.value);
-            }}
-            onBlur={() => validateEmail(email)}
-            disabled={isSubmitting}
-            className={`w-full p-2.5 rounded-lg border ${emailError ? "border-red-300" : "border-gray-300"
-              } focus:outline-none focus:ring-2 focus:ring-cyan-400`}
-          />
-          {emailError && (
-            <p className="text-xs text-red-600 mt-1">{emailError}</p>
-          )}
+        <div>
+          <label htmlFor="reg-email" className="hk-label">Email</label>
+          <div className="relative">
+            <Mail size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              id="reg-email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (e.target.value) validateEmail(e.target.value);
+              }}
+              onBlur={() => validateEmail(email)}
+              disabled={isSubmitting}
+              className={`hk-input pl-10 ${emailError ? "hk-input-error" : ""}`}
+            />
+          </div>
+          {emailError && <p className="hk-field-error">{emailError}</p>}
         </div>
 
         {/* Password */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Password
-          </label>
+        <div>
+          <label htmlFor="reg-password" className="hk-label">Password</label>
           <div className="relative">
+            <KeyRound size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
+              id="reg-password"
               type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
               placeholder="••••••••"
               value={password}
               onChange={(e) => {
@@ -177,50 +199,50 @@ export default function Register() {
               }}
               onBlur={() => validatePassword(password)}
               disabled={isSubmitting}
-              className={`w-full pr-10 p-2.5 rounded-lg border ${passwordError ? "border-red-300" : "border-gray-300"
-                } focus:outline-none focus:ring-2 focus:ring-cyan-400`}
+              className={`hk-input pl-10 pr-11 ${passwordError ? "hk-input-error" : ""}`}
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
               aria-label="Toggle password visibility"
               disabled={isSubmitting}
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
             </button>
           </div>
-          {passwordError && (
-            <p className="text-xs text-red-600 mt-1">{passwordError}</p>
-          )}
+          <ul className="mt-2.5 flex flex-wrap gap-1.5">
+            {passwordRules.map((r) => (
+              <li
+                key={r.text}
+                className={`hk-chip transition-colors ${
+                  r.ok ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                <Check size={11} strokeWidth={3} className={r.ok ? "opacity-100" : "opacity-30"} />
+                {r.text}
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* Register Button */}
         <button
-          onClick={handleRegister}
+          type="submit"
           disabled={!isFormValid || isSubmitting}
-          className={`w-full py-3 rounded-lg font-semibold text-white transition-all duration-200 
-            shadow-sm hover:shadow-md active:scale-[0.98]
-            ${!isFormValid || isSubmitting
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-cyan-500 hover:bg-cyan-600"
-            }`}
+          className="hk-btn hk-btn-primary hk-btn-lg w-full"
         >
-          {isSubmitting ? "Creating account..." : "Create Account"}
+          {isSubmitting ? (
+            <>
+              <LoaderCircle size={18} className="animate-spin" /> Creating account…
+            </>
+          ) : (
+            <>
+              Create account <ArrowRight size={17} />
+            </>
+          )}
         </button>
-
-        {/* Login CTA */}
-        <p className="text-sm text-center text-gray-600 mt-4">
-          Already have an account?{" "}
-          <span
-            onClick={() => navigate("/login")}
-            className="text-cyan-600 font-semibold cursor-pointer hover:underline"
-          >
-            Login
-          </span>
-        </p>
-
-      </div>
-    </div>
+      </form>
+    </AuthLayout>
   );
 }

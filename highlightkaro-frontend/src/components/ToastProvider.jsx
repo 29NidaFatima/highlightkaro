@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
+import { CircleCheck, CircleAlert, Info, X } from "lucide-react";
 import { subscribeToast } from "../utils/toast";
 
-const typeStyles = {
-  success: "bg-white/90 border-green-200 text-gray-700 dark:bg-gray-900/90 dark:border-yellow-500/20 dark:text-gray-300",
-  error: "bg-white/90 border-red-200 text-gray-700 dark:bg-gray-900/90 dark:border-yellow-500/20 dark:text-gray-300",
-  info: "bg-white/90 border-cyan-200 text-gray-700 dark:bg-gray-900/90 dark:border-yellow-500/20 dark:text-gray-300",
+const ICONS = {
+  success: <CircleCheck size={18} className="text-emerald-500" />,
+  error: <CircleAlert size={18} className="text-rose-500" />,
+  info: <Info size={18} className="text-cyan-500" />,
 };
 
-const accent = {
-  success: "text-green-600",
-  error: "text-red-600",
-  info: "text-cyan-600",
+const BARS = {
+  success: "bg-emerald-400",
+  error: "bg-rose-400",
+  info: "bg-cyan-400",
 };
 
 export default function ToastProvider({ children }) {
@@ -33,19 +34,22 @@ export default function ToastProvider({ children }) {
   return (
     <>
       {children}
-      <div className="fixed top-4 right-4 z-50 space-y-3">
+      <div className="pointer-events-none fixed inset-x-4 top-4 z-50 flex flex-col items-end gap-2.5 sm:left-auto sm:right-4">
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`min-w-[280px] max-w-sm rounded-xl border shadow-xl backdrop-blur-md px-4 py-3 flex items-start gap-3 transform transition-all duration-300 translate-y-0 ${typeStyles[t.type]}`}
+            role="status"
+            className="pointer-events-auto relative flex w-full max-w-sm animate-fade-up items-start gap-3 overflow-hidden rounded-2xl border border-white/70 bg-white/90 py-3 pl-4 pr-2 text-gray-700 shadow-[0_16px_40px_-16px_rgba(8,47,73,0.35)] backdrop-blur-xl"
           >
-            <div className={`mt-0.5 ${accent[t.type]}`}>●</div>
-            <div className="flex-1 text-sm leading-5">{t.message}</div>
+            <span className={`absolute inset-y-0 left-0 w-1 ${BARS[t.type] || BARS.info}`} />
+            <span className="mt-px">{ICONS[t.type] || ICONS.info}</span>
+            <p className="flex-1 text-sm leading-5">{t.message}</p>
             <button
               onClick={() => dismiss(t.id)}
-              className="ml-2 text-xs px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+              className="grid h-6 w-6 shrink-0 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+              aria-label="Dismiss"
             >
-              Close
+              <X size={14} />
             </button>
           </div>
         ))}

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Check, Clock, AlertTriangle } from "lucide-react";
+import { Check, Clock, AlertTriangle, LoaderCircle, Sparkles, ArrowRight } from "lucide-react";
+import StatusShell from "../components/StatusShell";
 import { confirmPaymentFromCallback } from "../api/paymentApi";
 
 const PLAN_FEATURES = {
@@ -93,122 +94,87 @@ export default function PaymentSuccess() {
   const features = user?.plan && PLAN_FEATURES[user.plan] ? PLAN_FEATURES[user.plan] : [];
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cyan-50 via-blue-50 to-sky-50 px-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full text-center border border-cyan-200">
-        {status === "verifying" && (
-          <>
-            <div className="flex justify-center mb-4">
-              <div className="w-10 h-10 border-4 border-cyan-300 border-t-transparent rounded-full animate-spin" />
-            </div>
-            <h2 className="text-xl font-semibold text-cyan-600 mb-2">
-              Verifying payment...
-            </h2>
-            <p className="text-sm text-gray-600">
-              Please wait while we update your account
-            </p>
-          </>
-        )}
+    <>
+      {status === "verifying" && (
+        <StatusShell tone="cyan" pulse icon={<LoaderCircle size={28} className="animate-spin" />} title="Verifying payment…">
+          <p className="mt-3 text-sm text-gray-600">Confirming with Razorpay and updating your account. This takes a few seconds.</p>
+          <div className="mx-auto mt-7 h-1.5 w-40 overflow-hidden rounded-full bg-cyan-100">
+            <div className="h-full w-1/2 -translate-x-full animate-shimmer rounded-full bg-gradient-to-r from-cyan-500 to-blue-600" />
+          </div>
+        </StatusShell>
+      )}
 
-        {status === "success" && (
-          <>
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
-                 <Check size={32} strokeWidth={3} />
-              </div>
-            </div>
+      {status === "success" && (
+        <StatusShell tone="green" icon={<Check size={30} strokeWidth={3} />} title="You're all set 🎉">
+          <p className="mt-3 text-[15px] text-gray-600">
+            Payment successful. You&apos;re now on the{" "}
+            <span className="font-semibold text-cyan-700">{PLAN_LABEL[user?.plan] || user?.plan}</span> plan.
+          </p>
+          {user?.planExpiresAt && (
+            <span className="hk-chip mt-3 bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100">
+              <Clock size={12} /> Active until {formatDate(user.planExpiresAt)}
+            </span>
+          )}
 
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              Payment Successful 🎉
-            </h2>
-
-            <p className="text-gray-600 mb-1">
-              You are now on the <span className="font-bold text-cyan-600">
-                {PLAN_LABEL[user?.plan] || user?.plan}
-              </span> plan
-            </p>
-            {user?.planExpiresAt && (
-              <p className="text-xs text-gray-500 mb-6">
-                Active until {formatDate(user.planExpiresAt)}
+          {features.length > 0 && (
+            <div className="mt-7 rounded-2xl bg-white/70 p-5 text-left ring-1 ring-cyan-100">
+              <p className="hk-eyebrow mb-3 text-cyan-800">
+                <Sparkles size={12} /> Unlocked features
               </p>
-            )}
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {features.map((feature, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
+                    <span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700">
+                      <Check size={11} strokeWidth={3.5} />
+                    </span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-            {features.length > 0 && (
-              <div className="bg-cyan-50 rounded-xl p-4 mb-6 text-left border border-cyan-100">
-                <p className="text-xs font-bold text-cyan-800 uppercase tracking-wider mb-3">
-                  Unlocked Features
-                </p>
-                <ul className="space-y-2">
-                  {features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                      <Check size={16} className="text-cyan-600 mt-0.5 flex-shrink-0" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+          <button onClick={() => navigate("/")} className="hk-btn hk-btn-primary hk-btn-lg mt-7 w-full">
+            Start creating <ArrowRight size={17} />
+          </button>
+        </StatusShell>
+      )}
 
+      {(status === "pending" || status === "login") && (
+        <StatusShell
+          tone="amber"
+          icon={<Clock size={28} strokeWidth={2.4} />}
+          title={status === "login" ? "Payment received" : "Payment is processing"}
+        >
+          <p className="mt-3 text-sm leading-relaxed text-gray-600">
+            {status === "login"
+              ? "Log in to see your upgraded plan. It is activated automatically once Razorpay confirms the payment."
+              : "We haven't received confirmation from Razorpay yet. Your plan activates automatically within a few minutes. If money was deducted and your plan doesn't update, contact support."}
+          </p>
+          <div className="mt-8 flex flex-col gap-3">
             <button
-              onClick={() => navigate("/")}
-              className="w-full py-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-bold shadow-lg shadow-cyan-200 transition-all transform hover:-translate-y-0.5"
+              onClick={() => (status === "login" ? navigate("/login") : window.location.reload())}
+              className="hk-btn hk-btn-primary hk-btn-lg w-full"
             >
-              Back to Editor
+              {status === "login" ? "Log in" : "Check again"}
             </button>
-          </>
-        )}
-
-        {(status === "pending" || status === "login") && (
-          <>
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center">
-                <Clock size={30} strokeWidth={2.5} />
-              </div>
-            </div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">
-              {status === "login" ? "Payment received" : "Payment is processing"}
-            </h2>
-            <p className="text-sm text-gray-600 mb-6">
-              {status === "login"
-                ? "Log in to see your upgraded plan. It is activated automatically once Razorpay confirms the payment."
-                : "We haven't received confirmation from Razorpay yet. Your plan activates automatically within a few minutes. If money was deducted and your plan doesn't update, contact support."}
-            </p>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => (status === "login" ? navigate("/login") : window.location.reload())}
-                className="w-full py-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-bold transition"
-              >
-                {status === "login" ? "Log in" : "Check again"}
-              </button>
-              <button
-                onClick={() => navigate("/")}
-                className="w-full py-3 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition"
-              >
-                Back to Editor
-              </button>
-            </div>
-          </>
-        )}
-
-        {status === "failed" && (
-          <>
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
-                <AlertTriangle size={30} strokeWidth={2.5} />
-              </div>
-            </div>
-            <h2 className="text-xl font-bold text-red-600 mb-2">Payment not completed</h2>
-            <p className="text-sm text-gray-600 mb-6">
-              The payment was cancelled or did not go through. No plan change was made.
-            </p>
-            <button
-              onClick={() => navigate("/upgrade")}
-              className="w-full py-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-bold transition"
-            >
-              Back to Plans
+            <button onClick={() => navigate("/")} className="hk-btn hk-btn-soft hk-btn-lg w-full">
+              Back to editor
             </button>
-          </>
-        )}
-      </div>
-    </div>
+          </div>
+        </StatusShell>
+      )}
+
+      {status === "failed" && (
+        <StatusShell tone="red" icon={<AlertTriangle size={28} strokeWidth={2.4} />} title="Payment not completed">
+          <p className="mt-3 text-sm text-gray-600">
+            The payment was cancelled or did not go through. No plan change was made.
+          </p>
+          <button onClick={() => navigate("/upgrade")} className="hk-btn hk-btn-primary hk-btn-lg mt-8 w-full">
+            Back to plans
+          </button>
+        </StatusShell>
+      )}
+    </>
   );
 }

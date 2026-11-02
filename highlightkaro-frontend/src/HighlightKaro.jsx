@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   Sun,
   Moon,
@@ -7,9 +7,23 @@ import {
   Palette,
   Download,
   Play,
+  Lock,
+  LogOut,
+  Crown,
+  Sparkles,
+  ImagePlus,
+  Layers,
+  Timer,
+  Gauge,
+  Undo2,
+  Trash2,
+  MousePointer2,
+  Check,
+  LoaderCircle,
 } from "lucide-react";
+import Logo from "./components/Logo";
 import { useAuth } from "./context/AuthContext";
-import { PLAN_CONFIG } from "./config/planConfig";
+import { PLAN_CONFIG, ALL_COLORS, ALL_ANIMATIONS } from "./config/planConfig";
 import { API_BASE_URL } from "./config/api";
 import { useNavigate } from "react-router-dom";
 import { saveExportState, getExportState, clearExportState } from "./utils/exportState";
@@ -24,6 +38,18 @@ import { showToast } from "./utils/toast";
 const HighlightKaro = () => {
 
   const [darkMode, setDarkMode] = useState(false);
+  const [dropActive, setDropActive] = useState(false);
+  const stars = useMemo(
+    () =>
+      Array.from({ length: 60 }, () => ({
+        left: `${Math.random() * 100}%`,
+        top: `${Math.random() * 100}%`,
+        delay: `${Math.random() * 3}s`,
+        duration: `${2 + Math.random() * 3}s`,
+        opacity: 0.3 + Math.random() * 0.6,
+      })),
+    []
+  );
   const [image, setImage] = useState(null);
   const [pricingData, setPricingData] = useState(null);
   const [recommendedRegion, setRecommendedRegion] = useState("global");
@@ -237,7 +263,7 @@ const HighlightKaro = () => {
       ctx.fillStyle = darkMode ? "#1a1a1a" : "#ecfeff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = darkMode ? "#666" : "#999";
-      ctx.font = "500 18px Inter, system-ui, sans-serif";
+      ctx.font = "500 18px Geist, system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(
         "Upload an image to start",
@@ -263,7 +289,7 @@ const HighlightKaro = () => {
     if (planConfig.watermark) {
       ctx.save();
       ctx.globalAlpha = 0.15;
-      ctx.font = "600 20px Inter, system-ui, sans-serif";
+      ctx.font = "600 20px Geist, system-ui, sans-serif";
       ctx.fillStyle = "#000";
       ctx.textAlign = "right";
       ctx.fillText(
@@ -632,635 +658,575 @@ const HighlightKaro = () => {
     }
   }, [user, token]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const ANIMATION_LABELS = {
+    "left-to-right": "Left → Right",
+    "down-up": "Down → Up",
+    rise: "Rise",
+    glow: "Glow pulse",
+    underline: "Underline",
+  };
+
+  const PLAN_LABELS = { free: "Free", basic30: "Basic", pro99: "Pro" };
+
+  // Lowest plan that unlocks a colour / animation, for the lock badges
+  const unlockPlanFor = (kind, value) =>
+    ["free", "basic30", "pro99"].find((p) => PLAN_CONFIG[p][kind].includes(value));
+
+  const promptUpgrade = (feature, planKey) => {
+    showToast(`${feature} is available on the ${PLAN_LABELS[planKey]} plan`, "info");
+    if (user) navigate("/upgrade");
+  };
+
+  const openFilePicker = () => fileInputRef.current?.click();
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDropActive(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (file && file.type.startsWith("image/")) {
+      handleImageUpload({ target: { files: [file] } });
+    } else if (file) {
+      showToast("Please drop an image file (PNG, JPG or WebP)", "error");
+    }
+  };
+
+  const displayImg = croppedImage || image;
+
   return (
-    <div
-      className={`min-h-screen transition-all duration-500 ${darkMode
-        ? "dark bg-black"
-        : "bg-gradient-to-br from-cyan-50 via-blue-50 to-sky-50"
-        }`}
-    >
-      {/* Background decorations */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {!darkMode ? (
-          <>
-            <div className="absolute bottom-0 left-0 w-64 h-64 opacity-20">
-              <svg viewBox="0 0 100 100" className="w-full h-full">
-                <path
-                  d="M50,10 L50,40 M45,15 L50,10 L55,15"
-                  stroke="#8b4513"
-                  fill="none"
-                  strokeWidth="2"
-                />
-                <ellipse cx="50" cy="45" rx="20" ry="15" fill="#90EE90" />
-              </svg>
-            </div>
-            <div className="absolute top-20 right-20 opacity-30">
-              {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute animate-bounce"
-                  style={{
-                    left: `${i * 40}px`,
-                    top: `${Math.sin(i) * 30}px`,
-                    animationDelay: `${i * 0.2}s`,
-                    animationDuration: "3s",
-                  }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 20">
-                    <path
-                      d="M10,2 L12,8 L18,8 L13,12 L15,18 L10,14 L5,18 L7,12 L2,8 L8,8 Z"
-                      fill="#06b6d4"
-                    />
-                  </svg>
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="absolute top-10 right-32 w-24 h-24">
-              <div className="w-full h-full rounded-full bg-gradient-to-br from-yellow-200 to-yellow-400 shadow-2xl shadow-yellow-400/50 animate-pulse" />
-            </div>
-            {[...Array(50)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute animate-pulse"
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 3}s`,
-                  animationDuration: `${2 + Math.random() * 2}s`,
-                }}
-              >
-                <div className="w-1 h-1 bg-yellow-300 rounded-full shadow-lg shadow-yellow-300/50" />
-              </div>
-            ))}
-          </>
-        )}
-
-        {/* Phoenix watermark */}
-        <div
-          className={`absolute bottom-4 right-4 opacity-10 ${darkMode ? "text-yellow-500" : "text-cyan-800"
-            }`}
-        >
-          <svg width="60" height="60" viewBox="0 0 100 100" fill="currentColor">
-            <path d="M50,10 C50,10 30,20 30,40 C30,50 35,55 40,58 C35,62 32,68 35,75 C40,85 55,88 60,80 C62,77 62,73 60,70 C70,68 75,60 73,50 C72,45 68,42 65,40 C70,35 70,25 50,10 Z" />
-            <circle cx="45" cy="35" r="3" />
-          </svg>
+    <div className={`hk-page transition-colors duration-500 ${darkMode ? "dark" : ""}`}>
+      {/* Dark mode sky */}
+      {darkMode && (
+        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+          <div className="absolute right-[12%] top-24 h-24 w-24 rounded-full bg-gradient-to-br from-yellow-200 to-amber-400 opacity-80 shadow-[0_0_80px_20px_rgba(250,204,21,0.25)]" />
+          {stars.map((s, i) => (
+            <span
+              key={i}
+              className="absolute h-[3px] w-[3px] animate-pulse rounded-full bg-yellow-200"
+              style={{ left: s.left, top: s.top, animationDelay: s.delay, animationDuration: s.duration, opacity: s.opacity }}
+            />
+          ))}
         </div>
-      </div>
+      )}
 
-  
       {/* Header */}
-      <div
-        className={`relative z-10 border-b ${darkMode
-          ? "bg-gray-900 border-yellow-500/20"
-          : "bg-white/80 border-cyan-200"
-          } backdrop-blur-sm`}
+      <header
+        className={`sticky top-0 z-30 border-b backdrop-blur-xl ${
+          darkMode ? "border-yellow-500/10 bg-black/60" : "border-white/60 bg-white/60"
+        }`}
       >
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
+          <Logo dark={darkMode} showTagline onClick={() => navigate("/")} />
 
-          {/* Left: Logo & Tagline */}
-          <div>
-            <h1
-              className={`text-3xl font-bold ${darkMode ? "text-yellow-400" : "text-cyan-600"
-                }`}
-            >
-              HighlightKaro
-            </h1>
-            <p
-              className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"
-                }`}
-            >
-              Create CapCut-style highlight animations in seconds
-            </p>
-          </div>
-
-
-          {/* Right actions */}
-          <div className="flex items-center gap-3">
-
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Legendary Dark Mode Toggle */}
-            <div className="relative ">
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                disabled={!planConfig.darkMode}
-                aria-label="Legendary Dark Mode"
-                className={`relative p-2.5 rounded-xl transition-all duration-300
-                  hover:scale-105 active:scale-95
-                  shadow-[0_4px_20px_rgba(0,0,0,0.08)]
-                  ${darkMode
-                    ? "bg-yellow-400 text-black hover:bg-yellow-300"
-                    : "bg-cyan-500 text-white hover:bg-cyan-600"}
-                  ${!planConfig.darkMode && "opacity-40 cursor-not-allowed"}
-                `}
-              >
-                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-              
-              {/* Tooltip */}
-              <div className={`absolute right-0 top-full mt-2 w-48 p-3 rounded-lg text-xs
-                opacity-0 invisible group-hover:opacity-100 group-hover:visible
-                transition-all duration-200 z-50 pointer-events-none
-                ${darkMode 
-                  ? "bg-gray-800 text-gray-200 border border-yellow-500/20" 
-                  : "bg-white text-gray-700 border border-cyan-200 shadow-lg"}
-              `}>
-                <p className={`font-semibold mb-1 ${darkMode ? "text-yellow-400" : "text-cyan-600"}`}>
-                  {planConfig.darkMode ? "Legendary Dark Mode" : "Legendary Dark Mode (Locked)"}
-                </p>
-                <p className="leading-relaxed">
-                  Galaxy interface with reduced eye strain
-                </p>
-                {!planConfig.darkMode && (
-                  <p className="mt-1.5 text-cyan-500 font-medium">
-                    Upgrade to Basic to unlock
-                  </p>
-                )}
-              </div>
-            </div>
+            <button
+              onClick={() =>
+                planConfig.darkMode ? setDarkMode(!darkMode) : promptUpgrade("Legendary Dark Mode", "basic30")
+              }
+              aria-label="Legendary Dark Mode"
+              title={planConfig.darkMode ? "Legendary Dark Mode" : "Legendary Dark Mode · unlock with Basic"}
+              className={`relative grid h-10 w-10 place-items-center rounded-xl transition-all duration-300 hover:scale-105 active:scale-95 ${
+                darkMode
+                  ? "bg-yellow-400 text-gray-950 shadow-[0_8px_24px_-8px_rgba(250,204,21,0.7)]"
+                  : "bg-white text-cyan-700 ring-1 ring-cyan-100 shadow-sm hover:bg-cyan-50"
+              }`}
+            >
+              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+              {!planConfig.darkMode && (
+                <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-gray-900 text-white">
+                  <Lock size={9} strokeWidth={3} />
+                </span>
+              )}
+            </button>
 
-            {/* Floating Plan + Action Capsule */}
-            {user && (
-              <div
-                className={`group flex items-center gap-3 px-4 py-2 rounded-2xl
-        backdrop-blur-xl transition-all duration-300
-        shadow-[0_10px_30px_rgba(0,0,0,0.12)]
-        hover:shadow-[0_14px_40px_rgba(0,0,0,0.16)]
-        ${darkMode
-                    ? "bg-gray-900/80 border border-yellow-500/20"
-                    : "bg-white/80 border border-cyan-200"}
-      `}
-              >
-                {/* Plan status */}
-                <div className="flex flex-col leading-tight">
-
-                  <span className={`text-sm font-semibold
-          ${darkMode ? "text-yellow-400" : "text-cyan-700"}`}>
-                    {PLAN_CONFIG[user.plan]?.name?.toUpperCase() || user.plan.toUpperCase()}
-                  </span>
-                  {user.planExpiresAt && (
-                    <span className={`text-[10px] ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                      until {new Date(user.planExpiresAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+            {user ? (
+              <>
+                {/* Plan capsule */}
+                <div
+                  className={`hidden items-center gap-3 rounded-2xl py-1.5 pl-3 pr-1.5 sm:flex ${
+                    darkMode ? "bg-white/5 ring-1 ring-yellow-500/15" : "bg-white/80 ring-1 ring-cyan-100 shadow-sm"
+                  }`}
+                >
+                  <div className="leading-tight">
+                    <span
+                      className={`flex items-center gap-1 text-[13px] font-semibold ${
+                        darkMode ? "text-yellow-400" : "text-cyan-700"
+                      }`}
+                    >
+                      {user.plan !== "free" && <Crown size={13} />}
+                      {PLAN_CONFIG[user.plan]?.name || user.plan} plan
                     </span>
+                    <span className={`block text-[11px] ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
+                      {user.planExpiresAt
+                        ? `until ${new Date(user.planExpiresAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`
+                        : user.name?.split(" ")[0] || ""}
+                    </span>
+                  </div>
+
+                  {user.plan === "free" && (
+                    <button onClick={() => navigate("/upgrade")} className="hk-btn hk-btn-primary px-3 py-1.5 text-xs">
+                      <Sparkles size={13} /> Upgrade
+                    </button>
                   )}
+                  {user.plan === "basic30" && (
+                    <button onClick={() => handleUpgrade("pro99")} className="hk-btn hk-btn-premium px-3 py-1.5 text-xs">
+                      <Crown size={13} /> Go Pro
+                    </button>
+                  )}
+                  {user.plan === "pro99" && <span className="w-1.5" />}
                 </div>
 
-                {/* Divider */}
-                <div className={`w-px h-6
-        ${darkMode ? "bg-yellow-500/20" : "bg-cyan-200"}`} />
-
-                {/* Upgrade CTA */}
                 {user.plan === "free" && (
                   <button
                     onClick={() => navigate("/upgrade")}
-                    className="ml-1 px-3 py-2 rounded-md  bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-medium transition"
+                    className="hk-btn hk-btn-primary h-10 w-10 px-0 sm:hidden"
+                    aria-label="Upgrade plan"
+                    title="Upgrade"
                   >
-                    Upgrade
+                    <Sparkles size={16} />
                   </button>
                 )}
 
-                {user.plan === "basic30" && (
-                  <button
-                    onClick={() => handleUpgrade("pro99")}
-                    className="
-    px-4 py-1.5 rounded-xl text-xs font-semibold
-    bg-gradient-to-br from-cyan-600 to-indigo-600
-    text-white
-    shadow-[0_8px_24px_rgba(79,70,229,0.35)]
-    hover:from-cyan-700 hover:to-indigo-700
-    hover:shadow-[0_12px_32px_rgba(79,70,229,0.45)]
-    active:scale-95
-    transition-all duration-300
-  "
-                  >
-                    Go Pro
-                  </button>
-
-                )}
-              </div>
-            )}
-
-            {/* Account action */}
-            {user && (
-              <button
-                onClick={() => {
-                  logout();
-                  navigate("/");
-                }}
-                className={`px-4 py-2 rounded-xl text-sm font-medium
-        backdrop-blur-md transition-all duration-300
-        hover:scale-[1.03] active:scale-95
-        ${darkMode
-                    ? "bg-gray-800/70 text-gray-300 hover:bg-gray-700"
-                    : "bg-white/70 border border-cyan-200 text-cyan-700 hover:bg-cyan-50"}
-      `}
-              >
-                Logout
-              </button>
-
+                <button
+                  onClick={() => {
+                    logout();
+                    navigate("/");
+                  }}
+                  className="hk-btn hk-btn-ghost h-10 px-3"
+                  title="Log out"
+                >
+                  <LogOut size={17} />
+                  <span className="hidden md:inline">Log out</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => navigate("/login")} className="hk-btn hk-btn-ghost h-10">
+                  Log in
+                </button>
+                <button onClick={() => navigate("/register")} className="hk-btn hk-btn-primary h-10">
+                  Sign up free
+                </button>
+              </>
             )}
           </div>
-
         </div>
-      </div>
-
+      </header>
 
       {/* Main layout */}
-      <div className="relative z-10 max-w-7xl mx-auto px-2 py-4 flex flex-col gap-4 md:flex-row md:gap-6 md:h-[calc(100vh-140px)]">
+      <main className="relative z-10 mx-auto flex max-w-7xl flex-col gap-4 px-3 py-4 sm:px-4 md:h-[calc(100vh-73px)] md:flex-row md:gap-5 md:py-5">
+        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
 
         {/* Controls panel */}
-        <div
-          className={`w-full md:w-80 lg:w-96 rounded-xl border p-4 max-h-[70vh] md:max-h-full overflow-y-auto  ${darkMode
-            ? "bg-gray-900 border-yellow-500/20"
-            : "bg-white/90 border-cyan-200"
-            } backdrop-blur-sm`}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
+        <aside className="hk-glass flex w-full flex-col overflow-hidden md:w-[340px] lg:w-[360px]">
+          <div className="flex-1 space-y-6 overflow-y-auto p-5 max-h-[70vh] md:max-h-none">
+            <button onClick={openFilePicker} className="hk-btn hk-btn-primary hk-btn-lg w-full">
+              {image ? <ImagePlus size={18} /> : <Upload size={18} />}
+              {image ? "Replace image" : "Upload image"}
+            </button>
 
-          <button
-            onClick={() => fileInputRef.current.click()}
-            className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${darkMode
-              ? "bg-yellow-500 text-black hover:bg-yellow-400"
-              : "bg-cyan-500 text-white hover:bg-cyan-600"
-              }`}
-          >
-            <Upload size={20} />
-            Upload Image
-          </button>
-
-          {image && (
-            <>
-              <div className="mt-6 space-y-4">
-                {/* Crop tool */}
-                <div>
-                  <label
-                    className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"
+            {!image && (
+              <ol className="space-y-3">
+                {[
+                  ["Upload", "a screenshot, note or article"],
+                  ["Drag", "across the words you want to highlight"],
+                  ["Preview & export", "as an MP4 video"],
+                ].map(([strong, rest], i) => (
+                  <li key={strong} className="flex items-start gap-3 text-sm">
+                    <span
+                      className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold ${
+                        darkMode ? "bg-yellow-400/15 text-yellow-300" : "bg-cyan-100 text-cyan-700"
                       }`}
-                  >
-                    <Crop size={16} className="inline mr-2" />
-                    Crop Tool
-                  </label>
-                  <div className="flex gap-2 mb-2">
+                    >
+                      {i + 1}
+                    </span>
+                    <span className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                      <span className={`font-semibold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{strong}</span>{" "}
+                      {rest}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            {image && (
+              <>
+                {/* Crop tool */}
+                <section className="space-y-2.5">
+                  <p className="hk-eyebrow">
+                    <Crop size={13} /> Crop
+                  </p>
+                  <div className="flex gap-2">
                     <button
                       onClick={startCrop}
-                      className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${cropMode
-                        ? darkMode
-                          ? "bg-yellow-500 text-black"
-                          : "bg-cyan-500 text-white"
-                        : darkMode
-                          ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                        }`}
+                      className={`hk-btn flex-1 ${cropMode ? "hk-btn-primary" : "hk-btn-soft"}`}
                     >
-                      {cropMode ? "Cropping..." : "Start Crop"}
+                      {cropMode ? "Cropping…" : "Start crop"}
                     </button>
                     {cropMode && (
-                      <button
-                        onClick={applyCrop}
-                        className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${darkMode
-                          ? "bg-green-600 hover:bg-green-500"
-                          : "bg-green-500 hover:bg-green-600"
-                          } text-white`}
-                      >
-                        Apply
+                      <button onClick={applyCrop} className="hk-btn hk-btn-success flex-1">
+                        <Check size={16} /> Apply
                       </button>
                     )}
                   </div>
                   {cropMode && (
-                    <select
-                      value={cropRatio}
-                      onChange={(e) => {
-                        setCropRatio(e.target.value);
-                        const ratio = e.target.value;
-                        if (ratio !== "free") {
-                          const [w, h] = ratio.split(":").map(Number);
-                          const imgAspect = image.width / image.height;
-                          const targetAspect = w / h;
-                          let newWidth, newHeight;
-                          if (imgAspect > targetAspect) {
-                            newHeight = image.height;
-                            newWidth = newHeight * targetAspect;
-                          } else {
-                            newWidth = image.width;
-                            newHeight = newWidth / targetAspect;
-                          }
-                          setCropRect({
-                            x: (image.width - newWidth) / 2,
-                            y: (image.height - newHeight) / 2,
-                            width: newWidth,
-                            height: newHeight,
-                          });
-                        }
-                      }}
-                      className={`w-full p-2 rounded-lg text-sm border ${darkMode
-                        ? "bg-gray-800 text-gray-300 border-gray-700"
-                        : "bg-gray-100 text-gray-700 border-gray-300"
-                        }`}
-                    >
-                      <option value="free">Freeform</option>
-                      <option value="16:9">16:9</option>
-                      <option value="9:16">9:16</option>
-                      <option value="1:1">1:1</option>
-                      <option value="4:3">4:3</option>
-                    </select>
+                    <div className="hk-segment">
+                      {[
+                        ["free", "Free"],
+                        ["16:9", "16:9"],
+                        ["9:16", "9:16"],
+                        ["1:1", "1:1"],
+                        ["4:3", "4:3"],
+                      ].map(([ratio, label]) => (
+                        <button
+                          key={ratio}
+                          data-active={cropRatio === ratio}
+                          className="hk-segment-item px-1"
+                          onClick={() => {
+                            setCropRatio(ratio);
+                            if (ratio !== "free") {
+                              const [w, h] = ratio.split(":").map(Number);
+                              const imgAspect = image.width / image.height;
+                              const targetAspect = w / h;
+                              let newWidth, newHeight;
+                              if (imgAspect > targetAspect) {
+                                newHeight = image.height;
+                                newWidth = newHeight * targetAspect;
+                              } else {
+                                newWidth = image.width;
+                                newHeight = newWidth / targetAspect;
+                              }
+                              setCropRect({
+                                x: (image.width - newWidth) / 2,
+                                y: (image.height - newHeight) / 2,
+                                width: newWidth,
+                                height: newHeight,
+                              });
+                            }
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   )}
-                </div>
+                </section>
 
-
+                <div className="hk-divider" />
 
                 {/* Highlight color */}
-
-                <div>
-                  <label className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                    <Palette size={16} className="inline mr-2" />
-                    Highlight Color
-                  </label>
-
-                  <div className="flex gap-2">
-                    {planConfig.colors === "ALL"
-                      ? ["#ffff00", "#ff0000", "#00ffff", "#00ff00"].map((color) => (
+                <section className="space-y-2.5">
+                  <p className="hk-eyebrow">
+                    <Palette size={13} /> Colour
+                  </p>
+                  <div className="flex flex-wrap gap-2.5">
+                    {ALL_COLORS.map((color) => {
+                      const allowed = planConfig.colors.includes(color);
+                      const selected = highlightColor === color;
+                      return (
                         <button
                           key={color}
-                          onClick={() => setHighlightColor(color)}
+                          onClick={() =>
+                            allowed ? setHighlightColor(color) : promptUpgrade("This colour", unlockPlanFor("colors", color))
+                          }
+                          aria-label={`Colour ${color}${allowed ? "" : " (locked)"}`}
+                          className={`relative h-9 w-9 rounded-full transition-all duration-200 hover:scale-110 ${
+                            selected
+                              ? darkMode
+                                ? "ring-2 ring-yellow-400 ring-offset-2 ring-offset-gray-900"
+                                : "ring-2 ring-cyan-500 ring-offset-2"
+                              : darkMode
+                                ? "ring-1 ring-white/10"
+                                : "ring-1 ring-black/10"
+                          }`}
                           style={{ backgroundColor: color }}
-                          className="w-8 h-8 rounded border"
-                        />
-                      ))
-                      : planConfig.colors.map((color) => (
-                        <button
-                          key={color}
-                          onClick={() => setHighlightColor(color)}
-                          style={{ backgroundColor: color }}
-                          className="w-8 h-8 rounded border"
-                        />
-                      ))}
+                        >
+                          {!allowed && (
+                            <span className="absolute inset-0 grid place-items-center rounded-full bg-black/45 text-white">
+                              <Lock size={13} strokeWidth={2.5} />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
-                </div>
-
+                </section>
 
                 {/* Opacity */}
-                <div>
-                  <label
-                    className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"
-                      }`}
-                  >
-                    Opacity: {Math.round(highlightOpacity * 100)}%
-                  </label>
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="hk-eyebrow">
+                      <Layers size={13} /> Opacity
+                    </p>
+                    <span className={`text-xs font-semibold tabular-nums ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                      {Math.round(highlightOpacity * 100)}%
+                    </span>
+                  </div>
                   <input
                     type="range"
                     min="0"
                     max="1"
                     step="0.01"
                     value={highlightOpacity}
-                    onChange={(e) =>
-                      setHighlightOpacity(parseFloat(e.target.value))
-                    }
-                    className="w-full"
+                    onChange={(e) => setHighlightOpacity(parseFloat(e.target.value))}
                   />
-                </div>
+                </section>
 
-                {/* Undo Button */}
-                <button
-                  onClick={handleUndo}
-                  disabled={highlights.length === 0}
-                  className={`w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all
-                    ${highlights.length === 0
-                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      : darkMode
-                        ? "bg-yellow-500 text-black hover:bg-yellow-400"
-                        : "bg-cyan-500 text-white hover:bg-cyan-600"
-                    }
-  `             }
-                >
-                  Undo Highlight
-                </button>
-
+                <div className="hk-divider" />
 
                 {/* Animation type */}
-                <div>
-                  <label
-                    className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"
-                      }`}
-                  >
-                    Animation Type
-                  </label>
-                  <select
-                    value={animationType}
-                    onChange={(e) => setAnimationType(e.target.value)}
-                    className={`w-full p-2 rounded-lg text-sm border ${darkMode
-                      ? "bg-gray-800 text-gray-300 border-gray-700"
-                      : "bg-gray-100 text-gray-700 border-gray-300"
-                      }`}
-                  >
-                    {planConfig.animations === "ALL" ? (
-                      <>
-                        <option value="left-to-right">Left → Right</option>
-                        <option value="down-up">Down → Up</option>
-                        <option value="rise">Rise</option>
-                        <option value="glow">Glow Swipe</option>
-                        <option value="underline">Underline</option>
-                      </>
-                    ) : (
-                      planConfig.animations.map((anim) => (
-                        <option key={anim} value={anim}>
-                          {anim}
-                        </option>
-                      ))
-                    )}
-                  </select>
-
-                </div>
+                <section className="space-y-2.5">
+                  <p className="hk-eyebrow">
+                    <Sparkles size={13} /> Animation
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {ALL_ANIMATIONS.map((anim) => {
+                      const allowed = planConfig.animations.includes(anim);
+                      const active = animationType === anim;
+                      return (
+                        <button
+                          key={anim}
+                          onClick={() =>
+                            allowed ? setAnimationType(anim) : promptUpgrade(ANIMATION_LABELS[anim], unlockPlanFor("animations", anim))
+                          }
+                          className={`flex items-center justify-between gap-1 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium transition-all duration-200 ${
+                            active
+                              ? darkMode
+                                ? "bg-yellow-400 text-gray-950"
+                                : "bg-cyan-500 text-white shadow-[0_8px_20px_-10px_rgba(6,182,212,0.9)]"
+                              : darkMode
+                                ? "bg-white/5 text-gray-300 hover:bg-white/10"
+                                : "bg-white text-gray-700 ring-1 ring-gray-200 hover:ring-cyan-300"
+                          } ${allowed ? "" : "opacity-60"}`}
+                        >
+                          {ANIMATION_LABELS[anim]}
+                          {!allowed && <Lock size={12} className="shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
 
                 {/* Duration */}
-                <div>
-                  <label
-                    className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"
-                      }`}
-                  >
-                    Duration: {animationDuration}s
-                  </label>
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="hk-eyebrow">
+                      <Timer size={13} /> Duration
+                    </p>
+                    <span className={`text-xs font-semibold tabular-nums ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                      {animationDuration}s
+                    </span>
+                  </div>
                   <input
                     type="range"
                     min="1"
                     max="10"
                     step="0.5"
                     value={animationDuration}
-                    onChange={(e) =>
-                      setAnimationDuration(parseFloat(e.target.value))
-                    }
-                    className="w-full"
+                    onChange={(e) => setAnimationDuration(parseFloat(e.target.value))}
                   />
-                </div>
+                </section>
 
                 {/* FPS */}
-                <div>
-                  <label
-                    className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"
-                      }`}
-                  >
-                    FPS
-                  </label>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setFps(24)}
-                      className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${fps === 24
-                        ? darkMode
-                          ? "bg-yellow-500 text-black"
-                          : "bg-cyan-500 text-white"
-                        : darkMode
-                          ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                        }`}
-                    >
-                      24
-                    </button>
-                    <button
-                      onClick={() => setFps(30)}
-                      className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all ${fps === 30
-                        ? darkMode
-                          ? "bg-yellow-500 text-black"
-                          : "bg-cyan-500 text-white"
-                        : darkMode
-                          ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                        }`}
-                    >
-                      30
-                    </button>
+                <section className="space-y-2.5">
+                  <p className="hk-eyebrow">
+                    <Gauge size={13} /> Frame rate
+                  </p>
+                  <div className="hk-segment">
+                    {[24, 30].map((v) => (
+                      <button key={v} data-active={fps === v} onClick={() => setFps(v)} className="hk-segment-item">
+                        {v} fps
+                      </button>
+                    ))}
                   </div>
-                </div>
+                </section>
 
                 {/* Highlights list */}
-                {highlights.length > 0 && (
-                  <div>
-                    <label
-                      className={`block text-sm font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"
+                <section className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <p className="hk-eyebrow">
+                      <MousePointer2 size={13} /> Highlights
+                      <span
+                        className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] ${
+                          darkMode ? "bg-white/10 text-gray-300" : "bg-cyan-100 text-cyan-700"
                         }`}
+                      >
+                        {highlights.length}
+                      </span>
+                    </p>
+                    <button
+                      onClick={handleUndo}
+                      disabled={highlights.length === 0}
+                      className="hk-btn hk-btn-ghost px-2 py-1 text-xs"
                     >
-                      Highlights ({highlights.length})
-                    </label>
-                    <div className="space-y-2 max-h-32 overflow-y-auto">
-                      {highlights.map((hl, idx) => (
-                        <div
-                          key={idx}
-                          className={`p-2 rounded-lg flex items-center justify-between text-sm ${darkMode ? "bg-gray-800" : "bg-gray-100"
-                            }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-4 h-4 rounded"
-                              style={{ backgroundColor: hl.color }}
-                            />
-                            <span
-                              className={
-                                darkMode ? "text-gray-300" : "text-gray-700"
-                              }
-                            >
-                              {hl.animation}
-                            </span>
-                          </div>
-                          <button
-                            onClick={() =>
-                              setHighlights(
-                                highlights.filter((_, i) => i !== idx)
-                              )
-                            }
-                            className={`text-xs px-2 py-1 rounded ${darkMode
-                              ? "bg-red-600 hover:bg-red-500"
-                              : "bg-red-500 hover:bg-red-600"
-                              } text-white`}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                      <Undo2 size={14} /> Undo
+                    </button>
                   </div>
-                )}
 
-                {/* Preview button */}
+                  {highlights.length === 0 ? (
+                    <p
+                      className={`rounded-xl border border-dashed px-3 py-4 text-center text-xs ${
+                        darkMode ? "border-white/10 text-gray-500" : "border-cyan-200 text-gray-500"
+                      }`}
+                    >
+                      Drag on the image to draw your first highlight
+                    </p>
+                  ) : (
+                    <ul className="max-h-40 space-y-1.5 overflow-y-auto pr-1">
+                      {highlights.map((hl, idx) => (
+                        <li
+                          key={idx}
+                          className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm ${
+                            darkMode ? "bg-white/5" : "bg-white ring-1 ring-gray-100"
+                          }`}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <span className="h-4 w-4 rounded-md ring-1 ring-black/10" style={{ backgroundColor: hl.color }} />
+                            <span className={darkMode ? "text-gray-300" : "text-gray-700"}>
+                              {ANIMATION_LABELS[hl.animation] || hl.animation}
+                            </span>
+                          </span>
+                          <button
+                            onClick={() => setHighlights(highlights.filter((_, i) => i !== idx))}
+                            className={`grid h-7 w-7 place-items-center rounded-lg transition ${
+                              darkMode ? "text-gray-500 hover:bg-red-500/15 hover:text-red-400" : "text-gray-400 hover:bg-red-50 hover:text-red-600"
+                            }`}
+                            aria-label="Remove highlight"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              </>
+            )}
+          </div>
+
+          {/* Sticky actions */}
+          {image && (
+            <div
+              className={`space-y-2.5 border-t p-4 ${
+                darkMode ? "border-yellow-500/10 bg-black/20" : "border-cyan-100/80 bg-white/40"
+              }`}
+            >
+              <div className="flex gap-2.5">
                 <button
                   onClick={() => {
                     setIsAnimating(true);
                     setAnimationTime(0);
                   }}
-                  disabled={highlights.length === 0}
-                  className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${highlights.length === 0
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : darkMode
-                      ? "bg-blue-600 hover:bg-blue-500 text-white"
-                      : "bg-cyan-500 hover:bg-cyan-600 text-white"
-                    }`}
+                  disabled={highlights.length === 0 || isAnimating}
+                  className="hk-btn hk-btn-soft hk-btn-lg flex-1"
                 >
-                  <Play size={20} />
-                  Preview Animation
+                  <Play size={17} />
+                  {isAnimating ? "Playing…" : "Preview"}
                 </button>
-
-
-                {/* Export button */}
                 <button
                   onClick={handleExport}
                   disabled={highlights.length === 0 || exporting}
-                  className={`w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all ${highlights.length === 0 || exporting
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : !user
-                      ? darkMode
-                        ? "bg-cyan-600 hover:bg-cyan-500 text-white"
-                        : "bg-cyan-500 hover:bg-cyan-600 text-white"
-                      : darkMode
-                        ? "bg-green-600 hover:bg-green-500 text-white"
-                        : "bg-green-500 hover:bg-green-600 text-white"
-                    }`}
+                  className={`hk-btn hk-btn-lg flex-[1.4] ${user ? "hk-btn-success" : "hk-btn-primary"}`}
                 >
-                  <Download size={20} />
-                  {exporting ? "Exporting..." : user ? "Export Video" : "Login to Export"}
+                  {exporting ? <LoaderCircle size={17} className="animate-spin" /> : <Download size={17} />}
+                  {exporting ? "Exporting…" : user ? "Export MP4" : "Log in to export"}
                 </button>
-
-                {/* Export limit info for free plan */}
-                {user && planConfig.exportLimit && (
-                  <p className="text-xs text-center text-gray-500 mt-2">
-                    {planConfig.exportLimit} exports per day on Free plan
-                  </p>
-                )}
-
               </div>
-            </>
+              {user && planConfig.exportLimit && (
+                <p className={`text-center text-[11px] ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
+                  {planConfig.exportLimit} free exports per day ·{" "}
+                  <button onClick={() => navigate("/upgrade")} className="font-semibold text-cyan-600 hover:underline">
+                    go unlimited
+                  </button>
+                </p>
+              )}
+            </div>
           )}
-        </div>
+        </aside>
 
         {/* Canvas Area */}
-        <div className="w-full flex items-center justify-center">
-
-          <div
-            className={`border rounded-xl p-4 backdrop-blur-sm ${darkMode
-              ? "bg-gray-900 border-yellow-500/20"
-              : "bg-white/90 border-cyan-200"
+        <section
+          className={`hk-glass hk-grid relative flex min-h-[55vh] flex-1 items-center justify-center overflow-hidden p-4 sm:p-6 ${
+            dropActive ? (darkMode ? "ring-2 ring-yellow-400" : "ring-2 ring-cyan-400") : ""
+          }`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDropActive(true);
+          }}
+          onDragLeave={() => setDropActive(false)}
+          onDrop={handleDrop}
+        >
+          {!displayImg && (
+            <button
+              onClick={openFilePicker}
+              className={`group flex w-full max-w-lg flex-col items-center rounded-3xl border-2 border-dashed px-6 py-14 text-center transition-all duration-300 ${
+                darkMode
+                  ? "border-yellow-500/25 hover:border-yellow-400/60 hover:bg-yellow-400/5"
+                  : "border-cyan-300/70 hover:border-cyan-400 hover:bg-white/60"
               }`}
-          >
+            >
+              <span
+                className={`mb-5 grid h-16 w-16 animate-float place-items-center rounded-2xl ${
+                  darkMode
+                    ? "bg-yellow-400/15 text-yellow-300"
+                    : "bg-gradient-to-br from-cyan-400 to-blue-600 text-white shadow-[0_14px_30px_-10px_rgba(6,182,212,0.8)]"
+                }`}
+              >
+                <ImagePlus size={28} />
+              </span>
+              <span className={`font-display text-2xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                Drop an image to start
+              </span>
+              <span className={`mt-2 text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                or <span className={`font-semibold ${darkMode ? "text-yellow-400" : "text-cyan-600"}`}>browse files</span> · PNG, JPG, WebP up to 15 MB
+              </span>
+            </button>
+          )}
+
+          <div className={displayImg ? "relative" : "hidden"}>
             <canvas
               ref={canvasRef}
-
               onClick={handleCanvasSelect}
               onTouchStart={handleCanvasSelect}
-
               onMouseDown={handleCanvasMouseDown}
               onMouseMove={handleCanvasMouseMove}
               onMouseUp={handleCanvasMouseUp}
               onMouseLeave={handleCanvasMouseUp}
-
-              className="rounded-lg max-w-full h-auto cursor-crosshair"
+              className={`h-auto max-w-full cursor-crosshair rounded-2xl ${
+                darkMode ? "shadow-[0_20px_60px_-20px_rgba(0,0,0,0.9)]" : "shadow-[0_20px_60px_-24px_rgba(8,47,73,0.45)]"
+              }`}
             />
-
           </div>
-        </div>
-      </div>
+
+          {displayImg && (
+            <span
+              className={`hk-chip absolute bottom-4 left-1/2 -translate-x-1/2 backdrop-blur ${
+                darkMode ? "bg-black/60 text-gray-300 ring-1 ring-white/10" : "bg-white/80 text-gray-600 ring-1 ring-cyan-100"
+              }`}
+            >
+              {cropMode ? (
+                <>
+                  <Crop size={12} /> Drag the frame, then Apply
+                </>
+              ) : (
+                <>
+                  <MousePointer2 size={12} /> Drag across text to highlight
+                </>
+              )}
+            </span>
+          )}
+
+          {dropActive && (
+            <div
+              className={`pointer-events-none absolute inset-0 grid place-items-center text-sm font-semibold ${
+                darkMode ? "bg-black/60 text-yellow-300" : "bg-cyan-50/80 text-cyan-700"
+              }`}
+            >
+              Drop to upload
+            </div>
+          )}
+        </section>
+      </main>
     </div>
   );
 };

@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { API_BASE_URL } from "../config/api";
 import { showToast } from "../utils/toast";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Mail, KeyRound, ArrowRight, LoaderCircle } from "lucide-react";
+import AuthLayout from "../components/AuthLayout";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -112,51 +113,65 @@ export default function Login() {
   const isFormValid = email && password && !emailError && !passwordError;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cyan-50 via-blue-50 to-sky-50 px-4">
-      <div className="w-full max-w-sm bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-cyan-200 p-6">
-
-        {/* Title */}
-        <h2 className="text-2xl font-bold text-center text-cyan-600 mb-1">
-          Welcome Back
-        </h2>
-        <p className="text-center text-sm text-gray-600 mb-6">
-          {searchParams.get("return") === "export"
-            ? "Login to export your highlight video"
-            : "Login to continue using HighlightKaro"}
-        </p>
-
+    <AuthLayout
+      title="Welcome back"
+      subtitle={
+        searchParams.get("return") === "export"
+          ? "Log in to export your highlight video."
+          : "Log in to continue creating with HighlightKaro."
+      }
+      footer={
+        <>
+          Don&apos;t have an account?{" "}
+          <button
+            onClick={() => navigate("/register")}
+            className="font-semibold text-cyan-700 underline-offset-4 hover:underline"
+          >
+            Create one free
+          </button>
+        </>
+      }
+    >
+      <form
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (isFormValid && !isSubmitting) handleLogin();
+        }}
+        className="space-y-5"
+      >
         {/* Email */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email
-          </label>
-          <input
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            className={`w-full p-2.5 rounded-lg border ${emailError ? "border-red-300" : "border-gray-300"
-              } focus:outline-none focus:ring-2 focus:ring-cyan-400`}
-            onChange={handleEmailChange}
-            onBlur={() => validateEmail(email)}
-            disabled={isSubmitting}
-          />
-          {emailError && (
-            <p className="text-xs text-red-600 mt-1">{emailError}</p>
-          )}
+        <div>
+          <label htmlFor="login-email" className="hk-label">Email</label>
+          <div className="relative">
+            <Mail size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              id="login-email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={email}
+              className={`hk-input pl-10 ${emailError ? "hk-input-error" : ""}`}
+              onChange={handleEmailChange}
+              onBlur={() => validateEmail(email)}
+              disabled={isSubmitting}
+            />
+          </div>
+          {emailError && <p className="hk-field-error">{emailError}</p>}
         </div>
 
         {/* Password */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Password
-          </label>
+        <div>
+          <label htmlFor="login-password" className="hk-label">Password</label>
           <div className="relative">
+            <KeyRound size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
+              id="login-password"
               type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
               placeholder="••••••••"
               value={password}
-              className={`w-full pr-10 p-2.5 rounded-lg border ${passwordError ? "border-red-300" : "border-gray-300"
-                } focus:outline-none focus:ring-2 focus:ring-cyan-400`}
+              className={`hk-input pl-10 pr-11 ${passwordError ? "hk-input-error" : ""}`}
               onChange={handlePasswordChange}
               onBlur={() => validatePassword(password)}
               disabled={isSubmitting}
@@ -164,58 +179,46 @@ export default function Login() {
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
               aria-label="Toggle password visibility"
               disabled={isSubmitting}
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
             </button>
           </div>
-          {passwordError && (
-            <p className="text-xs text-red-600 mt-1">{passwordError}</p>
-          )}
+          {passwordError && <p className="hk-field-error">{passwordError}</p>}
         </div>
 
         {/* Remember Me */}
-        <div className="mb-6 flex items-center gap-2 ">
+        <label htmlFor="rememberMe" className="flex cursor-pointer select-none items-center gap-2.5 text-sm text-gray-600">
           <input
             id="rememberMe"
             type="checkbox"
             checked={rememberMe}
-            className="accent-cyan-600 focus:ring-cyan-600 focus:outline-none"
+            className="h-4 w-4 rounded accent-cyan-600"
             onChange={(e) => setRememberMe(e.target.checked)}
             disabled={isSubmitting}
           />
-          <label htmlFor="rememberMe" className="text-sm text-gray-700">
-            Remember me
-          </label>
-        </div>
+          Keep me signed in for 7 days
+        </label>
 
         {/* Login Button */}
         <button
-          onClick={handleLogin}
+          type="submit"
           disabled={!isFormValid || isSubmitting}
-          className={`w-full py-3 rounded-lg font-semibold text-white transition-all duration-200 
-            shadow-sm hover:shadow-md active:scale-[0.98]
-            ${!isFormValid || isSubmitting
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-cyan-500 hover:bg-cyan-600"
-            }`}
+          className="hk-btn hk-btn-primary hk-btn-lg w-full"
         >
-          {isSubmitting ? "Logging in..." : "Login"}
+          {isSubmitting ? (
+            <>
+              <LoaderCircle size={18} className="animate-spin" /> Logging in…
+            </>
+          ) : (
+            <>
+              Log in <ArrowRight size={17} />
+            </>
+          )}
         </button>
-        {/* Register CTA */}
-        <p className="text-sm text-center text-gray-600 mt-4">
-          Don’t have an account?{" "}
-          <span
-            onClick={() => navigate("/register")}
-            className="text-cyan-600 font-semibold cursor-pointer hover:underline"
-          >
-            Create one
-          </span>
-        </p>
-
-      </div>
-    </div>
+      </form>
+    </AuthLayout>
   );
 }

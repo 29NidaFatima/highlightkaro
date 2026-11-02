@@ -3,7 +3,8 @@ import { useAuth } from "../context/AuthContext";
 import { createPaymentLink } from "../api/paymentApi";
 import { fetchPricing } from "../api/pricingApi";
 import { useNavigate } from "react-router-dom";
-import { Check } from "lucide-react";
+import { Check, X, ArrowLeft, ArrowRight, Sparkles, Crown, ShieldCheck, CreditCard, Zap, LoaderCircle, IndianRupee, Globe } from "lucide-react";
+import Logo from "../components/Logo";
 import { PLAN_CODES } from "../config/pricingConfig";
 import { showToast } from "../utils/toast";
 
@@ -60,10 +61,10 @@ export default function Upgrade() {
     };
   }, [currentPricing]);
 
-  const formatMonthly = (monthly) => {
-    if (!currentPricing) return "";
-    return `${currentPricing.currencySymbol}${monthly} ${currentPricing.cadenceLabel}`;
-  };
+  const formatPrice = (monthly) => ({
+    amount: `${currentPricing.currencySymbol}${monthly}`,
+    cadence: currentPricing.cadenceLabel,
+  });
 
   const upgrade = async (plan) => {
     if (pendingPlan) return;
@@ -99,7 +100,7 @@ export default function Upgrade() {
   // A plan can be bought if it's higher than the current one, or renewed if it's the same paid plan
   const planButton = (code, buyLabel) => {
     const rank = PLAN_ORDER.indexOf(code);
-    if (pendingPlan === code) return { text: "Creating payment link...", disabled: true };
+    if (pendingPlan === code) return { text: "Opening checkout…", disabled: true };
     if (!planPrices) return { text: buyLabel, disabled: true };
     if (rank < currentRank) return { text: "Included in your plan", disabled: true };
     if (rank === currentRank) return { text: "Renew for 1 month", disabled: !!pendingPlan, renew: true };
@@ -110,170 +111,172 @@ export default function Upgrade() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-sky-50 px-4 py-10">
-      
-      {/* Header */}
-      <div className="max-w-4xl mx-auto text-center mb-10">
-        <h1 className="text-4xl font-bold text-cyan-600 mb-2">
-          Upgrade Your Plan
-        </h1>
-        <p className="text-gray-600 text-sm mb-6">
-          Unlock premium features and export watermark-free videos
-        </p>
+    <div className="hk-page">
+      {/* Top bar */}
+      <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
+        <Logo onClick={() => navigate("/")} />
+        <button onClick={() => navigate("/")} className="hk-btn hk-btn-ghost">
+          <ArrowLeft size={16} /> Back to editor
+        </button>
+      </header>
 
-        {/* Region Toggle */}
-        {pricingData && (
-          <div className="inline-flex bg-white/50 p-1 rounded-xl border border-cyan-100 shadow-sm">
-            <button
-              onClick={() => setSelectedRegion("india")}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                selectedRegion === "india"
-                  ? "bg-white text-cyan-700 shadow-sm ring-1 ring-cyan-100"
-                  : "text-gray-500 hover:text-cyan-600"
-              }`}
-            >
-              🇮🇳 India Pricing
-            </button>
-            <button
-              onClick={() => setSelectedRegion("global")}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                selectedRegion === "global"
-                  ? "bg-white text-cyan-700 shadow-sm ring-1 ring-cyan-100"
-                  : "text-gray-500 hover:text-cyan-600"
-              }`}
-            >
-              🌍 International Pricing
-            </button>
-          </div>
-        )}
-        
-        {user.plan !== "free" && (
-          <div className="mt-4 text-sm text-gray-600">
-            You're on <span className="font-semibold text-cyan-700">{user.plan === "pro99" ? "Pro" : "Basic"}</span>
-            {expiresOn ? <> · active until <span className="font-semibold">{expiresOn}</span></> : null}
-          </div>
-        )}
+      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-4">
+        {/* Hero */}
+        <div className="mx-auto max-w-2xl animate-fade-up text-center">
+          <span className="hk-chip bg-white/80 text-cyan-700 ring-1 ring-cyan-100">
+            <Sparkles size={12} /> Simple monthly pricing
+          </span>
+          <h1 className="mt-4 text-4xl font-extrabold text-gray-900 sm:text-5xl">
+            Upgrade your <span className="hk-gradient-text">highlights</span>
+          </h1>
+          <p className="mx-auto mt-3 max-w-lg text-[15px] text-gray-600">
+            Watermark-free 1080p exports, more colours and every animation. One-time payment for 30 days, no auto-renewal.
+          </p>
 
-        {/* Recommended Badge */}
-        {pricingData?.recommendedRegion === selectedRegion && (
-          <div className="mt-2 text-xs text-cyan-600 font-medium">
-            ✨ Recommended for you
-          </div>
-        )}
-      </div>
+          {user.plan !== "free" && (
+            <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/80 px-4 py-1.5 text-sm text-gray-700 ring-1 ring-cyan-100">
+              <Crown size={14} className="text-cyan-600" />
+              You&apos;re on <span className="font-semibold text-cyan-700">{user.plan === "pro99" ? "Pro" : "Basic"}</span>
+              {expiresOn ? <>· active until <span className="font-semibold">{expiresOn}</span></> : null}
+            </p>
+          )}
 
-      {/* Pricing Cards */}
-      <div className="max-w-5xl mx-auto grid gap-6 md:grid-cols-3">
+          {/* Region Toggle */}
+          {pricingData && (
+            <div className="mt-7 flex flex-col items-center gap-2">
+              <div className="hk-segment w-full max-w-xs bg-white/70 ring-1 ring-cyan-100">
+                <button
+                  data-active={selectedRegion === "india"}
+                  onClick={() => setSelectedRegion("india")}
+                  className="hk-segment-item"
+                >
+                  <span className="inline-flex items-center justify-center gap-1.5"><IndianRupee size={14} /> India</span>
+                </button>
+                <button
+                  data-active={selectedRegion === "global"}
+                  onClick={() => setSelectedRegion("global")}
+                  className="hk-segment-item"
+                >
+                  <span className="inline-flex items-center justify-center gap-1.5"><Globe size={14} /> Global · $</span>
+                </button>
+              </div>
+              {pricingData?.recommendedRegion === selectedRegion && (
+                <span className="text-xs font-medium text-cyan-700">✨ Recommended for your location</span>
+              )}
+            </div>
+          )}
+        </div>
 
-        {/* FREE */}
-        <PlanCard
-          title="Free"
-          price={planPrices ? formatMonthly(planPrices.free?.monthly ?? 0) : "—"}
-          current={user.plan === "free"}
-          features={[
-            { text: "1 color (Yellow)", icon: "color" },
-            { text: "1 animation", icon: "anim" },
-            { text: "720p export", icon: "quality" },
-            { text: "Watermark enabled", icon: "watermark" },
-            { text: "Light mode only", icon: "theme" },
-          ]}
-          buttonText="Current Plan"
-          disabled
-        />
+        {/* Pricing Cards */}
+        <div className="mt-12 grid items-stretch gap-5 md:grid-cols-3">
+          {/* FREE */}
+          <PlanCard
+            title="Free"
+            blurb="Try it out"
+            price={planPrices ? formatPrice(0) : null}
+            current={user.plan === "free"}
+            features={[
+              { text: "Yellow highlight", on: true },
+              { text: "Left → Right animation", on: true },
+              { text: "720p export", on: true },
+              { text: "2 exports per day", on: true },
+              { text: "Watermark on videos", on: false },
+              { text: "Light mode only", on: false },
+            ]}
+            buttonText={user.plan === "free" ? "Your current plan" : "Included"}
+            disabled
+          />
 
-        {/* BASIC */}
-        <PlanCard
-          title="Basic"
-          price={planPrices?.basic ? formatMonthly(planPrices.basic.monthly) : "—"}
-          subPrice={planPrices?.basic?.perDayLabel || null}
-          highlight
-          current={user.plan === "basic30"}
-          features={[
-            { text: "Yellow + Red colors", icon: "color" },
-            { text: "4 animations", icon: "anim" },
-            { text: "1080p export", icon: "quality" },
-            { text: "No watermark", icon: "watermark" },
-            { text: "Legendary Dark Mode", icon: "theme", highlight: true, tooltip: "Galaxy interface with reduced eye strain" },
-          ]}
-          buttonText={basicBtn.text}
-          onClick={() => upgrade(PLAN_CODES.BASIC)}
-          disabled={basicBtn.disabled}
-          renewable={basicBtn.renew}
-        />
+          {/* BASIC */}
+          <PlanCard
+            title="Basic"
+            blurb="For regular creators"
+            price={planPrices?.basic ? formatPrice(planPrices.basic.monthly) : null}
+            subPrice={planPrices?.basic?.perDayLabel || null}
+            badge="Most popular"
+            current={user.plan === "basic30"}
+            features={[
+              { text: "Yellow + Red colours", on: true },
+              { text: "4 animations", on: true },
+              { text: "1080p export", on: true },
+              { text: "Unlimited exports", on: true },
+              { text: "No watermark", on: true },
+              { text: "Legendary Dark Mode", on: true, star: true },
+            ]}
+            buttonText={basicBtn.text}
+            loading={pendingPlan === PLAN_CODES.BASIC}
+            onClick={() => upgrade(PLAN_CODES.BASIC)}
+            disabled={basicBtn.disabled}
+            renewable={basicBtn.renew}
+          />
 
-        {/* PRO */}
-        <PlanCard
-          title="Pro"
-          price={planPrices?.pro ? formatMonthly(planPrices.pro.monthly) : "—"}
-          subPrice={planPrices?.pro?.perDayLabel || null}
-          premium
-          current={user.plan === "pro99"}
-          features={[
-            { text: "All colors unlocked", icon: "color" },
-            { text: "All animations", icon: "anim" },
-            { text: "1080p export", icon: "quality" },
-            { text: "No watermark", icon: "watermark" },
-            { text: "Legendary Dark Mode", icon: "theme", highlight: true },
-            { text: "Cloud save", icon: "cloud" },
-          ]}
-          buttonText={proBtn.text}
-          onClick={() => upgrade(PLAN_CODES.PRO)}
-          disabled={proBtn.disabled}
-          renewable={proBtn.renew}
-        />
-      </div>
-      
-      {pricingError ? (
-        <div className="max-w-5xl mx-auto mt-6">
-          <div className="bg-white/90 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+          {/* PRO */}
+          <PlanCard
+            title="Pro"
+            blurb="Everything, unlocked"
+            price={planPrices?.pro ? formatPrice(planPrices.pro.monthly) : null}
+            subPrice={planPrices?.pro?.perDayLabel || null}
+            badge="Best value"
+            premium
+            current={user.plan === "pro99"}
+            features={[
+              { text: "All 6 colours", on: true },
+              { text: "All 5 animations incl. Underline", on: true },
+              { text: "1080p export", on: true },
+              { text: "Unlimited exports", on: true },
+              { text: "No watermark", on: true },
+              { text: "Legendary Dark Mode", on: true, star: true },
+              { text: "Cloud save (coming soon)", on: true },
+            ]}
+            buttonText={proBtn.text}
+            loading={pendingPlan === PLAN_CODES.PRO}
+            onClick={() => upgrade(PLAN_CODES.PRO)}
+            disabled={proBtn.disabled}
+            renewable={proBtn.renew}
+          />
+        </div>
+
+        {pricingError ? (
+          <div className="mx-auto mt-6 max-w-xl rounded-2xl border border-red-200 bg-white/90 px-4 py-3 text-center text-sm text-red-700">
             {pricingError}
           </div>
+        ) : null}
+
+        {/* Trust row */}
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-gray-500">
+          <span className="flex items-center gap-2">
+            <ShieldCheck size={16} className="text-cyan-600" /> Secure checkout by Razorpay
+          </span>
+          <span className="flex items-center gap-2">
+            <CreditCard size={16} className="text-cyan-600" /> UPI, cards &amp; netbanking
+          </span>
+          <span className="flex items-center gap-2">
+            <Zap size={16} className="text-cyan-600" /> Activates instantly
+          </span>
         </div>
-      ) : null}
-
-      {/* Footer */}
-      <div className="text-center mt-10">
-        <button
-          onClick={() => navigate("/")}
-          className="
-            group inline-flex items-center gap-2
-            px-4 py-2 rounded-lg
-            text-sm font-medium text-cyan-700
-            bg-white/80 backdrop-blur
-            border border-cyan-200
-            hover:bg-cyan-50 hover:border-cyan-300
-            focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2
-            transition-all duration-200
-            shadow-sm
-          "
-        >
-          <span className="transition-transform group-hover:-translate-x-1">←</span>
-          Back to editor
-        </button>
-
-
-      </div>
+      </main>
     </div>
   );
 }
 
 /* ---------- Feature Item ---------- */
-function FeatureItem({ feature }) {
-  const text = typeof feature === "string" ? feature : feature.text;
-  const isHighlight = typeof feature === "object" && feature.highlight;
-  const tooltip = typeof feature === "object" && feature.tooltip;
-
+function FeatureItem({ feature, premium }) {
   return (
-    <li className="flex items-start gap-2 group relative">
-      <Check size={16} className={`mt-0.5 flex-shrink-0 ${isHighlight ? "text-yellow-500" : "text-cyan-500"}`} />
-      <span className={isHighlight ? "font-medium text-gray-800" : ""}>
-        {text}
-        {tooltip && (
-          <span className="ml-1 text-gray-400 cursor-help" title={tooltip}>
-            ?
-          </span>
-        )}
+    <li className={`flex items-start gap-2.5 ${feature.on ? "" : "text-gray-400"}`}>
+      <span
+        className={`mt-0.5 grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full ${
+          !feature.on
+            ? "bg-gray-100 text-gray-400"
+            : feature.star
+              ? "bg-yellow-100 text-yellow-600"
+              : premium
+                ? "bg-white/20 text-white"
+                : "bg-cyan-100 text-cyan-700"
+        }`}
+      >
+        {feature.on ? <Check size={11} strokeWidth={3.5} /> : <X size={11} strokeWidth={3} />}
       </span>
+      <span className={feature.star ? "font-semibold" : ""}>{feature.text}</span>
     </li>
   );
 }
@@ -281,69 +284,80 @@ function FeatureItem({ feature }) {
 /* ---------- Reusable Card ---------- */
 function PlanCard({
   title,
+  blurb,
   price,
   subPrice,
+  badge,
   features,
   buttonText,
   onClick,
   disabled,
-  highlight,
   premium,
   current,
   renewable,
+  loading,
 }) {
+  const buttonDisabled = disabled || (current && !renewable);
+
   return (
     <div
-      className={`relative rounded-2xl border p-6 shadow-sm bg-white transition-all duration-200
-        ${highlight && !current ? "border-cyan-500 shadow-lg hover:shadow-xl" : "border-cyan-200"}
-        ${premium && !current ? "border-cyan-600 shadow-xl ring-1 ring-cyan-200 hover:shadow-2xl" : ""}
-        ${current ? "border-cyan-500 ring-1  ring-cyan-100 " : ""}
-      `}
+      className={`relative flex flex-col rounded-3xl p-7 transition-all duration-300 hover:-translate-y-1 ${
+        premium
+          ? "bg-gradient-to-br from-cyan-600 via-sky-600 to-blue-700 text-white shadow-[0_30px_60px_-24px_rgba(8,145,178,0.75)]"
+          : `hk-glass ${current ? "ring-2 ring-cyan-400" : ""}`
+      }`}
     >
-      {highlight && !current && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-cyan-500 text-white text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
-          Most Popular
+      {(current || badge) && (
+        <span
+          className={`hk-chip absolute -top-3 left-7 ${
+            current
+              ? "bg-gray-900 text-white"
+              : premium
+                ? "bg-yellow-300 text-gray-950"
+                : "bg-cyan-500 text-white"
+          }`}
+        >
+          {current ? "Current plan" : badge}
         </span>
       )}
 
-      {premium && !current && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
-          Best Value
-        </span>
-      )}
+      <h3 className={`text-xl font-bold ${premium ? "text-white" : "text-gray-900"}`}>{title}</h3>
+      <p className={`mt-0.5 text-sm ${premium ? "text-cyan-50/80" : "text-gray-500"}`}>{blurb}</p>
 
-      {current && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-cyan-400 text-white text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
-          Current Plan
-        </span>
-      )}
-
-      <h3 className="text-xl font-bold text-gray-900 mb-1">{title}</h3>
-      <div className="mb-5">
-        <p className="text-2xl font-bold text-gray-800">{price}</p>
-        {subPrice && <p className="text-xs text-gray-500 mt-1">{subPrice}</p>}
+      <div className="mt-6 min-h-[64px]">
+        {price ? (
+          <p className="flex items-baseline gap-1.5">
+            <span className="font-display text-5xl font-extrabold tracking-tight">{price.amount}</span>
+            <span className={`text-sm ${premium ? "text-cyan-50/80" : "text-gray-500"}`}>{price.cadence}</span>
+          </p>
+        ) : (
+          <span className="block h-12 w-28 animate-pulse rounded-xl bg-gray-200/70" />
+        )}
+        {subPrice && <p className={`mt-1 text-xs ${premium ? "text-cyan-50/80" : "text-gray-500"}`}>{subPrice}</p>}
       </div>
 
-      <ul className="space-y-2.5 text-sm text-gray-700 mb-6">
+      <ul className={`mt-6 flex-1 space-y-3 text-sm ${premium ? "text-white" : "text-gray-700"}`}>
         {features.map((f, i) => (
-          <FeatureItem key={i} feature={f} />
+          <FeatureItem key={i} feature={f} premium={premium} />
         ))}
       </ul>
 
       <button
         onClick={onClick}
-        disabled={disabled || (current && !renewable)}
-        className={`w-full py-2.5 rounded-lg font-medium transition-all duration-200
-          ${
-            disabled || (current && !renewable)
-              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-              : premium
-              ? "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white shadow-md hover:shadow-lg"
-              : "bg-cyan-500 hover:bg-cyan-600 text-white shadow-sm hover:shadow-md"
-          }
-        `}
+        disabled={buttonDisabled}
+        className={`hk-btn hk-btn-lg mt-8 w-full ${
+          buttonDisabled
+            ? premium
+              ? "bg-white/15 text-white/80 disabled:opacity-100"
+              : "bg-gray-100 text-gray-500 disabled:opacity-100"
+            : premium
+              ? "bg-white text-cyan-700 shadow-lg hover:bg-cyan-50"
+              : "hk-btn-primary"
+        }`}
       >
+        {loading && <LoaderCircle size={17} className="animate-spin" />}
         {buttonText}
+        {!buttonDisabled && !loading && <ArrowRight size={16} />}
       </button>
     </div>
   );
